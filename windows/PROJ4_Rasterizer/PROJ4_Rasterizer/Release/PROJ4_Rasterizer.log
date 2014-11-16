@@ -1,0 +1,86 @@
+﻿Build started 2014/11/14 20:04:26.
+     1>Project "C:\Users\JiaweiWang\Desktop\cs565Final\windows\PROJ4_Rasterizer\PROJ4_Rasterizer\PROJ4_Rasterizer.vcxproj" on node 2 (Build target(s)).
+     1>ClCompile:
+         c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /IC:\Users\JiaweiWang\Desktop\cs565Final\windows\PROJ4_Rasterizer\..\..\external\include /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.5\include" /Zi /nologo /W3 /WX- /O2 /Oi /Oy- /GL /D _MBCS /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Release\\" /Fd"Release\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt ..\..\..\external\src\glslUtil\glslUtility.cpp ..\..\..\external\src\objUtil\obj.cpp ..\..\..\external\src\objUtil\objloader.cpp ..\..\..\src\main.cpp ..\..\..\src\utilities.cpp
+         glslUtility.cpp
+     1>..\..\..\external\src\glslUtil\glslUtility.cpp(107): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\string.h(105) : see declaration of 'strcpy'
+         obj.cpp
+     1>..\..\..\external\src\objUtil\obj.cpp(27): warning C4018: '<' : signed/unsigned mismatch
+     1>..\..\..\external\src\objUtil\obj.cpp(44): warning C4018: '<' : signed/unsigned mismatch
+     1>..\..\..\external\src\objUtil\obj.cpp(52): warning C4018: '<' : signed/unsigned mismatch
+     1>..\..\..\external\src\objUtil\obj.cpp(87): warning C4018: '<' : signed/unsigned mismatch
+     1>..\..\..\external\src\objUtil\obj.cpp(90): warning C4018: '<' : signed/unsigned mismatch
+     1>..\..\..\external\src\objUtil\obj.cpp(93): warning C4018: '<' : signed/unsigned mismatch
+     1>..\..\..\external\src\objUtil\obj.cpp(134): warning C4018: '<' : signed/unsigned mismatch
+     1>..\..\..\external\src\objUtil\obj.cpp(170): warning C4018: '<' : signed/unsigned mismatch
+     1>..\..\..\external\src\objUtil\obj.cpp(220): warning C4018: '<' : signed/unsigned mismatch
+     1>..\..\..\external\src\objUtil\obj.cpp(227): warning C4018: '<' : signed/unsigned mismatch
+     1>..\..\..\external\src\objUtil\obj.cpp(234): warning C4018: '<' : signed/unsigned mismatch
+         objloader.cpp
+     1>..\..\..\external\src\objUtil\objloader.cpp(72): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>..\..\..\external\src\objUtil\objloader.cpp(76): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>..\..\..\external\src\objUtil\objloader.cpp(91): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>..\..\..\external\src\objUtil\objloader.cpp(93): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>..\..\..\external\src\objUtil\objloader.cpp(95): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>..\..\..\external\src\objUtil\objloader.cpp(107): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+         main.cpp
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(17): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(18): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(19): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(20): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(21): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(22): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(23): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\main.h(70): warning C4305: 'initializing' : truncation from 'double' to 'float'
+     1>..\..\..\src\main.cpp(35): warning C4244: '=' : conversion from 'time_t' to 'double', possible loss of data
+     1>..\..\..\src\main.cpp(57): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>..\..\..\src\main.cpp(59): warning C4244: '=' : conversion from 'time_t' to 'double', possible loss of data
+     1>..\..\..\src\main.cpp(105): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
+     1>..\..\..\src\main.cpp(367): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>..\..\..\src\main.cpp(368): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>..\..\..\src\main.cpp(371): warning C4244: '-=' : conversion from 'double' to 'float', possible loss of data
+     1>..\..\..\src\main.cpp(372): warning C4244: '-=' : conversion from 'double' to 'float', possible loss of data
+     1>..\..\..\src\main.cpp(377): warning C4244: 'initializing' : conversion from 'double' to 'float', possible loss of data
+         GLM: perspective function taking degrees as a parameter is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+         GLM: rotate function taking degrees as a parameter is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+         utilities.cpp
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(17): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(18): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(19): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(20): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(21): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(22): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+     1>c:\users\jiaweiwang\desktop\cs565final\src\utilities.h(23): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+         GLM: rotate function taking degrees as a parameter is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+       Link:
+         c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\JiaweiWang\Desktop\cs565Final\windows\PROJ4_Rasterizer\Release\wjw_PROJ4_Rasterizer.exe" /NOLOGO /LIBPATH:C:\Users\JiaweiWang\Desktop\cs565Final\windows\PROJ4_Rasterizer\..\..\external\lib\win\GLFW /LIBPATH:C:\Users\JiaweiWang\Desktop\cs565Final\windows\PROJ4_Rasterizer\..\..\external\lib\win\GL /LIBPATH:"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.5\lib\Win32" cudart.lib glew32s.lib glfw3.lib opengl32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /ManifestFile:"Release\wjw_PROJ4_Rasterizer.exe.intermediate.manifest" /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /DEBUG /PDB:"C:\Users\JiaweiWang\Desktop\cs565Final\windows\PROJ4_Rasterizer\Release\wjw_PROJ4_Rasterizer.pdb" /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\JiaweiWang\Desktop\cs565Final\windows\PROJ4_Rasterizer\Release\wjw_PROJ4_Rasterizer.lib" /MACHINE:X86 Release\rasterizeKernels.cu.obj
+         Release\glslUtility.obj
+         Release\obj.obj
+         Release\objloader.obj
+         Release\main.obj
+         Release\utilities.obj
+     1>LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
+         Generating code
+         Finished generating code
+     1>main.obj : warning LNK4049: locally defined symbol ___glewActiveTexture imported
+     1>main.obj : warning LNK4049: locally defined symbol _glewInit@0 imported
+     1>main.obj : warning LNK4049: locally defined symbol _glewExperimental imported
+     1>main.obj : warning LNK4049: locally defined symbol ___glewBufferData imported
+     1>main.obj : warning LNK4049: locally defined symbol ___glewGenBuffers imported
+     1>main.obj : warning LNK4049: locally defined symbol ___glewEnableVertexAttribArray imported
+     1>main.obj : warning LNK4049: locally defined symbol ___glewVertexAttribPointer imported
+     1>main.obj : warning LNK4049: locally defined symbol ___glewGetUniformLocation imported
+     1>main.obj : warning LNK4049: locally defined symbol ___glewUniform1i imported
+     1>main.obj : warning LNK4049: locally defined symbol ___glewUseProgram imported
+     1>main.obj : warning LNK4049: locally defined symbol ___glewBindBuffer imported
+     1>main.obj : warning LNK4049: locally defined symbol ___glewDeleteBuffers imported
+     1>glew32s.lib(glew.obj) : warning LNK4099: PDB 'vc100.pdb' was not found with 'glew32s.lib(glew.obj)' or at 'C:\Users\JiaweiWang\Desktop\cs565Final\windows\PROJ4_Rasterizer\Release\vc100.pdb'; linking object as if no debug info
+         PROJ4_Rasterizer.vcxproj -> C:\Users\JiaweiWang\Desktop\cs565Final\windows\PROJ4_Rasterizer\Release\wjw_PROJ4_Rasterizer.exe
+       Manifest:
+         C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\bin\mt.exe /nologo /verbose /outputresource:"C:\Users\JiaweiWang\Desktop\cs565Final\windows\PROJ4_Rasterizer\Release\wjw_PROJ4_Rasterizer.exe;#1" /manifest Release\wjw_PROJ4_Rasterizer.exe.intermediate.manifest
+     1>Done Building Project "C:\Users\JiaweiWang\Desktop\cs565Final\windows\PROJ4_Rasterizer\PROJ4_Rasterizer\PROJ4_Rasterizer.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:03.62
