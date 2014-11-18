@@ -5,13 +5,13 @@
 #include <cuda.h>
 #include <cmath>
 #include <thrust/random.h>
+#include <thrust/device_ptr.h>
+#include <thrust/copy.h>
 #include "rasterizeKernels.h"
 #include "rasterizeTools.h"
 #include "glm\gtc\matrix_transform.hpp"
 #include <iostream>
 using namespace std;
-
-//#define Back_Culling 1
 
 #define SHOWBODY 0
 #define SHOWLINES 0
@@ -24,6 +24,7 @@ float* device_cbo;
 int* device_ibo;
 float* device_nbo;
 triangle* primitives;
+triangle* primitives2;
 
 void checkCUDAError(const char *msg) {
 	cudaError_t err = cudaGetLastError();
@@ -138,8 +139,6 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
 	}
 }
 
-//TODO: Implement a vertex shader
-//finished.
 __global__ void vertexShadeKernel(float* vbo, int vbosize, float* nbo, int nbosize, glm::vec2 resolution, float zNear, float zFar, glm::mat4 projection, glm::mat4 view){
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if(index<vbosize/3){
@@ -170,8 +169,6 @@ __global__ void vertexShadeKernel(float* vbo, int vbosize, float* nbo, int nbosi
 	}
 }
 
-//TODO: Implement primative assembly
-//finished.
 __global__ void primitiveAssemblyKernel(float* vbo, int vbosize, float* cbo, int cbosize, int* ibo, int ibosize, float* nbo, int nbosize, triangle* primitives){
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int primitivesCount = ibosize/3;
@@ -203,6 +200,26 @@ __global__ void primitiveAssemblyKernel(float* vbo, int vbosize, float* cbo, int
 		primitives[index].p2 = p2;
 
 	}
+}
+
+//Thrust predicate for triangle removal of backfacing
+struct check_triangle {
+  __host__ __device__
+    bool operator() (const triangle& t) {
+    float x1 = t.p1.x - t.p0.x;
+    float y1 = t.p1.y - t.p0.y;
+    float x2 = t.p2.x - t.p0.x;
+    float y2 = t.p2.y - t.p0.y;
+
+    return !((x1*y2 - y1*x2) > 0.0f);
+  }
+};
+
+//Kernel to trim primitives before rasterization
+__host__ void culling(triangle* primitives, triangle* new_primitives, int& numPrimitives) {
+  thrust::device_ptr<triangle> in = thrust::device_pointer_cast<triangle>(primitives);
+  thrust::device_ptr<triangle> out = thrust::device_pointer_cast<triangle>(new_primitives);
+  numPrimitives = thrust::copy_if(in, in + numPrimitives, out, check_triangle()) - out;
 }
 
 __device__ glm::vec2 scanLineTriangleIntersect(glm::vec2 p1,glm::vec2 p2,glm::vec2 q1,glm::vec2 q2,glm::vec2 q3) {
@@ -262,8 +279,6 @@ __device__ glm::vec3 bcInterpolate(glm::vec3 BC, glm::vec3 e1,glm::vec3 e2,glm::
 	return BC.x * e1+ BC.y * e2 + BC.z * e3;
 }
 
-//TODO: Implement a rasterization method, such as scanline.
-//finished. using scanline method.
 __global__ void rasterizationKernel(triangle* primitives, int primitivesCount, fragment* depthbuffer, glm::vec2 resolution, float zNear, float zFar, bool barycenter){
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if(index<primitivesCount){
@@ -303,9 +318,6 @@ __global__ void rasterizationKernel(triangle* primitives, int primitivesCount, f
 						depthbuffer[screenPointIndex] = frag;
 						depthbuffer[screenPointIndex].depth = 1;
 					}
-					//printf("%d\n",screenPointIndex);
-					//printf("%f, %f, %f\n", depthbuffer [screenPointIndex].color.x, depthbuffer [screenPointIndex].color.y, depthbuffer [screenPointIndex].color.z);
-
 				}
 			}
 		}
@@ -387,7 +399,6 @@ __global__ void verticesRasterizeKernel(triangle* primitives, int primitivesCoun
 	}
 }
 
-//TODO: Implement a fragment shader
 //need to be improved..
 __global__ void fragmentShadeKernel(fragment* depthbuffer, glm::vec2 resolution, glm::vec3 lightpos, glm::vec3 eyepos, glm::mat4 projection, glm::mat4 view){
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -410,6 +421,56 @@ __global__ void fragmentShadeKernel(fragment* depthbuffer, glm::vec2 resolution,
 		}
 
 	}
+}
+
+//Handy function for reflection
+__host__ __device__ glm::vec3 reflect(glm::vec3 vec_in, glm::vec3 norm) {
+  return (vec_in - 2.0f*glm::dot(vec_in, norm)*norm);
+}
+
+//Handy function for clamping between two values;
+__host__ __device__ float clamp(float val, float min, float max) {
+  float result = val;
+  if (val < min) {
+    val = min;
+  }
+  else if (val > max) {
+    val = max;
+  }
+  return val;
+}
+
+//Phong shader
+__global__ void fragmentShadePhongKernel(fragment* depthbuffer, glm::vec2 resolution, glm::vec3 lightpos){
+  int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+  int index = x + (y * resolution.x);
+  if (x <= resolution.x && y <= resolution.y){
+    if (depthbuffer[index].position.z > -10000.0f) {
+      //Store the fragment info locally for accessibility
+      glm::vec3 V = depthbuffer[index].position;
+      glm::vec3 N = depthbuffer[index].normal;
+
+      //Compute necessary vectors
+      glm::vec3 L = glm::normalize(lightpos- V);
+      glm::vec3 E = glm::normalize(-V);
+      glm::vec3 R = glm::normalize(reflect(-L, N));
+
+      //Shininess
+      float specPow = 4.0f;
+
+      //Green (TODO: read from material)
+      glm::vec3 green(0.0f, 1.0f, 0.0f);
+
+      //Compute lighting
+      glm::vec3 ambient = 0.1f * green;
+      glm::vec3 diffuse = 0.45f * clamp(glm::dot(N, L), 0.0f, 1.0f) * green;
+      glm::vec3 specular = 0.45f * clamp(pow(max(glm::dot(R, E), 0.0f), specPow), 0.0f, 1.0f) * green;
+      depthbuffer[index].color = ambient + diffuse + specular;
+
+      //depthbuffer[index].color = green;
+    }
+  }
 }
 
 //Writes fragment colors to the framebuffer
@@ -454,6 +515,8 @@ void cudaRasterizeCore(uchar4* PBOpos, glm::vec2 resolution, glm::mat4 rotationM
 	//------------------------------
 	primitives = NULL;
 	cudaMalloc((void**)&primitives, (ibosize/3)*sizeof(triangle));
+  primitives2 = NULL;
+  cudaMalloc((void**)&primitives2, (ibosize/3)*sizeof(triangle));
 
 	device_ibo = NULL;
 	cudaMalloc((void**)&device_ibo, ibosize*sizeof(int));
@@ -483,7 +546,6 @@ void cudaRasterizeCore(uchar4* PBOpos, glm::vec2 resolution, glm::mat4 rotationM
 	//------------------------------
 	//vertex shader
 	//------------------------------
-	//cout<<"1"<<endl;
 	vertexShadeKernel<<<primitiveBlocks, tileSize>>>(device_vbo, vbosize, device_nbo, nbosize, resolution, zNear, zFar, perspectiveM, view);
 
 	cudaDeviceSynchronize();
@@ -495,14 +557,22 @@ void cudaRasterizeCore(uchar4* PBOpos, glm::vec2 resolution, glm::mat4 rotationM
 
 	cudaDeviceSynchronize();
 
-	int numOfPrimitives = ibosize/3 + 1;
+	int numOfPrimitives = ibosize/3 ;
+
+  //------------------------------
+  //culling
+  //------------------------------
+  culling(primitives, primitives2, numOfPrimitives);
+  primitiveBlocks = ceil(((float)numOfPrimitives) / ((float)tileSize));
+  triangle* temp = primitives;
+  primitives = primitives2;
+  primitives2 = temp;
 
 	//------------------------------
 	//rasterization
 	//------------------------------
 	if(SHOWBODY || mode==0){
-		rasterizationKernel<<<primitiveBlocks, tileSize>>>(primitives, ibosize/3, depthbuffer, resolution, zNear, zFar, barycenter);
-		//fragmentShadeKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(depthbuffer, resolution, lightpos, eye, perspectiveM, view);
+		rasterizationKernel<<<primitiveBlocks, tileSize>>>(primitives, numOfPrimitives, depthbuffer, resolution, zNear, zFar, barycenter);
 		cudaDeviceSynchronize();
 	}
 	if(SHOWLINES || mode==1){
@@ -516,11 +586,11 @@ void cudaRasterizeCore(uchar4* PBOpos, glm::vec2 resolution, glm::mat4 rotationM
 	//------------------------------
 	//fragment shader
 	//------------------------------
-	//fragmentShadeKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(depthbuffer, resolution, lightpos, eye, perspectiveM, lookatM);
-	//glm::vec3 projection, glm::vec3 model, glm::vec3 view, glm::vec3 lightpos, glm::vec3 eyepos
-	//
+	//fragmentShadeKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(depthbuffer, resolution, lightpos, eye, perspectiveM, view);
+  fragmentShadePhongKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(depthbuffer, resolution, lightpos);
 
 	cudaDeviceSynchronize();
+
 	//------------------------------
 	//write fragments to framebuffer
 	//------------------------------
@@ -536,9 +606,11 @@ void cudaRasterizeCore(uchar4* PBOpos, glm::vec2 resolution, glm::mat4 rotationM
 
 void kernelCleanup(){
 	cudaFree( primitives );
+  cudaFree( primitives2 );
 	cudaFree( device_vbo );
 	cudaFree( device_cbo );
 	cudaFree( device_ibo );
+  cudaFree( device_nbo );
 	cudaFree( framebuffer );
 	cudaFree( depthbuffer );
 }
