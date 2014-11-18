@@ -134,9 +134,10 @@ bool init(int argc, char* argv[]) {
   }
   glfwMakeContextCurrent(window);
   glfwSetKeyCallback(window, keyCallback);
-  glfwSetMouseButtonCallback(window,MouseClickCallback);
-  glfwSetCursorEnterCallback(window,CursorEnterCallback);
-  glfwSetCursorPosCallback(window,CursorCallback);
+  glfwSetMouseButtonCallback(window, MouseClickCallback);
+  glfwSetCursorEnterCallback(window, CursorEnterCallback);
+  glfwSetCursorPosCallback(window, CursorCallback);
+  glfwSetScrollCallback(window, ScrollCallback);
 
   // Set up GL context
   glewExperimental = GL_TRUE;
@@ -390,4 +391,9 @@ void CursorCallback(GLFWwindow *window, double x, double y){
 
 	eye = glm::vec3(R*sin(vTheta)*sin(vPhi), R*cos(vTheta) + center.y, R*sin(vTheta)*cos(vPhi));
 	view = glm::lookAt(eye, center, glm::vec3(0,1,0));
+}
+
+void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+  R = (1.0f - 0.006f * yoffset * ZOOM_SPEED) * R;
+  R = glm::clamp(R, zNear, zFar);
 }

@@ -211,7 +211,7 @@ struct check_triangle {
     float x2 = t.p2.x - t.p0.x;
     float y2 = t.p2.y - t.p0.y;
 
-    return !((x1*y2 - y1*x2) > 0.0f);
+    return ((x1*y2 - y1*x2) > 0.0f);
   }
 };
 

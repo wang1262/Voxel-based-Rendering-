@@ -20,8 +20,8 @@
 #include <time.h>
 #include "glm\gtc\matrix_transform.hpp"
 
-#define MOUSE_SPEED 1.2*0.0001f
-#define ZOOM_SPEED 3
+#define MOUSE_SPEED 2.0*0.0001f
+#define ZOOM_SPEED 8
 #define MIDDLE_SPEED 3
 
 #include "rasterizeKernels.h"
@@ -68,7 +68,7 @@ int width = 800; int height = 800;
 glm::vec3 eye(0.0f, 0.8f, 3.0f);
 glm::vec3 center(0.0f, 0.4f, 0.0f);
 float zNear = 0.001;
-float zFar = 10000;
+float zFar = 10000.0;
 glm::mat4 projection = glm::perspective(60.0f, (float)(width) / (float)(height), zNear, zFar);
 glm::mat4 model = glm::mat4();
 glm::mat4 view = glm::lookAt(eye,center , glm::vec3(0, 1, 0));
@@ -128,6 +128,7 @@ bool MB = false;
 bool inwindow = false;
 void MouseClickCallback(GLFWwindow *window, int button, int action, int mods);
 void CursorCallback(GLFWwindow *window, double x,double y);
+void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 void CursorEnterCallback(GLFWwindow *window,int entered);
 //Make the camera move on the surface of sphere
 float vPhi = 0.0f;
