@@ -52,7 +52,7 @@ namespace glslUtility {
 			file.read (memblock, size);
 			file.close();
 			std::cout << "file " << fname << " loaded" << std::endl;
-    		return memblock;
+    	return memblock;
 		}
 
 		std::cout << "Unable to open file " << fname << std::endl;
@@ -137,20 +137,19 @@ namespace glslUtility {
 		// load shaders & get length of each
 		GLint vlen, flen, glen;
 		char *vertexSource, *fragmentSource, *geometrySource;
-		const char *vv, *ff, *gg;
 
 		vertexSource = loadFile(vert_path, vlen);
-		vv = vertexSource;
-		compileShader("Vertex", vv, GL_VERTEX_SHADER, (GLint&)out.vertex);
+		std::string vv(vertexSource, vertexSource + vlen);
+		compileShader("Vertex", vv.c_str(), GL_VERTEX_SHADER, (GLint&)out.vertex);
 
 		fragmentSource = loadFile(frag_path, flen);
-		ff = fragmentSource;
-		compileShader("Fragment", ff, GL_FRAGMENT_SHADER, (GLint&)out.fragment);
+		std::string ff(fragmentSource, fragmentSource + flen);
+		compileShader("Fragment", ff.c_str(), GL_FRAGMENT_SHADER, (GLint&)out.fragment);
 
 		if (geom_path) {
 			geometrySource = loadFile(geom_path, glen);
-			gg = geometrySource;
-			compileShader("Geometry", gg, GL_GEOMETRY_SHADER, (GLint&)out.geometry);
+			std::string gg(geometrySource, geometrySource + glen);
+			compileShader("Geometry", gg.c_str(), GL_GEOMETRY_SHADER, (GLint&)out.geometry);
 		}
 
 		return out;
@@ -170,36 +169,36 @@ namespace glslUtility {
 		printLinkInfoLog(program);
 	}
 
-	GLuint createDefaultProgram(const char *attributeLocations[], GLuint numberOfLocations)
-    {
-	    glslUtility::shaders_t shaders = glslUtility::loadDefaultShaders();
+	GLuint createDefaultProgram(const char *attributeLocations[], GLuint numberOfLocations) {
+	  glslUtility::shaders_t shaders = glslUtility::loadDefaultShaders();
 	
-	    GLuint program = glCreateProgram();
+	  GLuint program = glCreateProgram();
 
 		for (GLuint i = 0; i < numberOfLocations; ++i)
 		{
-            glBindAttribLocation(program, i, attributeLocations[i]);
-		}
+      glBindAttribLocation(program, i, attributeLocations[i]);
+  	}
 
-	    glslUtility::attachAndLinkProgram(program, shaders);
+	  glslUtility::attachAndLinkProgram(program, shaders);
 
-        return program;
-    }
+    return program;
+  }
 
-    GLuint createProgram(const char *vertexShaderPath, const char *fragmentShaderPath, 
-    					 const char *attributeLocations[], GLuint numberOfLocations)
-    {
-	    glslUtility::shaders_t shaders = glslUtility::loadShaders(vertexShaderPath, fragmentShaderPath);
+  GLuint createProgram(const char *attributeLocations[], GLuint numberOfLocations,
+    const char *vertexShaderPath, const char *fragmentShaderPath,
+    const char *geometryShaderPath) {
+
+	  glslUtility::shaders_t shaders = glslUtility::loadShaders(vertexShaderPath, fragmentShaderPath);
 	
-	    GLuint program = glCreateProgram();
+	  GLuint program = glCreateProgram();
 
 		for (GLuint i = 0; i < numberOfLocations; ++i)
 		{
-            glBindAttribLocation(program, i, attributeLocations[i]);
+      glBindAttribLocation(program, i, attributeLocations[i]);
 		}
 
-	    glslUtility::attachAndLinkProgram(program, shaders);
+	  glslUtility::attachAndLinkProgram(program, shaders);
 
-        return program;
-    }
+    return program;
+  }
 }

@@ -1,5 +1,3 @@
-// CIS565 CUDA Rasterizer: A simple rasterization pipeline for Patrick Cozzi's CIS565: GPU Computing at the University of Pennsylvania
-// Written by Yining Karl Li, Copyright (c) 2012 University of Pennsylvania
 
 #ifndef MAIN_H
 #define MAIN_H
@@ -11,6 +9,7 @@
 #include <cuda_gl_interop.h>
 #include <fstream>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glslUtil/glslUtility.hpp>
 #include <iostream>
 #include <objUtil/objloader.h>
@@ -22,7 +21,9 @@
 
 #define MOUSE_SPEED 2.0*0.0001f
 #define ZOOM_SPEED 8
-#define MIDDLE_SPEED 3
+#define MIDDLE_SPEED 12
+
+#define USE_CUDA_RASTERIZER 1
 
 #include "rasterizeKernels.h"
 #include "utilities.h"
@@ -60,8 +61,17 @@ int ibosize;
 float* nbo;
 int nbosize;
 
+// Uniform locations for the GL shaders
+GLuint mvp_location;
+GLuint proj_location;
+GLuint norm_location;
+GLuint light_location;
+
+// VBO's for the GL pipeline
+GLuint buffers[2];
+
 //-------------------------------
-//----------CUDA STUFF-----------
+//----------GLOBAL STUFF-----------
 //-------------------------------
 
 int width = 800; int height = 800;
@@ -75,6 +85,11 @@ glm::mat4 view = glm::lookAt(eye,center , glm::vec3(0, 1, 0));
 glm::mat4 modelview = view * glm::mat4();
 glm::vec3 lightpos = glm::vec3(0, 2.0f, 2.0f);
 
+//Make the camera move on the surface of sphere
+float vPhi = 0.0f;
+float vTheta = 3.14105926f / 2.0f;
+float R = glm::length(eye);
+
 //-------------------------------
 //-------------MAIN--------------
 //-------------------------------
@@ -87,6 +102,7 @@ int main(int argc, char** argv);
 //-------------------------------
 
 void runCuda();
+void runGL();
 
 #ifdef __APPLE__
 	void display();
@@ -99,11 +115,17 @@ void runCuda();
 //----------SETUP STUFF----------
 //-------------------------------
 bool init(int argc, char* argv[]);
-void initPBO();
+
+//CUDA Rasterizer Setup
+void initCudaPBO();
 void initCuda();
-void initTextures();
-void initVAO();
-GLuint initShader();
+void initCudaTextures();
+void initCudaVAO();
+GLuint initPassthroughShaders();
+
+//GL Rasterizer Setup
+void initGL();
+GLuint initDefaultShaders();
 
 //-------------------------------
 //---------CLEANUP STUFF---------
@@ -130,9 +152,5 @@ void MouseClickCallback(GLFWwindow *window, int button, int action, int mods);
 void CursorCallback(GLFWwindow *window, double x,double y);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 void CursorEnterCallback(GLFWwindow *window,int entered);
-//Make the camera move on the surface of sphere
-float vPhi = 0.0f;
-float vTheta = 3.14105926f/2.0f;
-float R = glm::length(eye);
 
 #endif

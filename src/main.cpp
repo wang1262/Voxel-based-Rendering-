@@ -1,5 +1,3 @@
-// CIS565 CUDA Rasterizer: A simple rasterization pipeline for Patrick Cozzi's CIS565: GPU Computing at the University of Pennsylvania
-// Written by Yining Karl Li, Copyright (c) 2012 University of Pennsylvania
 
 #include "main.h"
 
@@ -19,7 +17,7 @@ int main(int argc, char** argv){
       mesh = new obj();
       objLoader* loader = new objLoader(data, mesh);
       mesh->buildVBOs();
-	  meshes.push_back(mesh);
+	    meshes.push_back(mesh);
       delete loader;
       loadedScene = true;
     }
@@ -27,7 +25,7 @@ int main(int argc, char** argv){
 
   if(!loadedScene){
     cout << "Usage: mesh=[obj file]" << endl;
-	system("PAUSE");
+	  system("PAUSE");
     return 0;
   }
 
@@ -48,7 +46,12 @@ int main(int argc, char** argv){
 void mainLoop() {
   while(!glfwWindowShouldClose(window)){
     glfwPollEvents();
-    runCuda();
+
+    if (USE_CUDA_RASTERIZER) {
+      runCuda();
+    } else {
+      runGL();
+    }
 
     time_t seconds2 = time (NULL);
 
@@ -59,16 +62,19 @@ void mainLoop() {
         seconds = seconds2;
     }
 
-    string title = "CIS565 Rasterizer | " + utilityCore::convertIntToString((int)fps) + " FPS";
+    string title = "Voxel Rendering | " + utilityCore::convertIntToString((int)fps) + " FPS";
 		glfwSetWindowTitle(window, title.c_str());
-    
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-    glBindTexture(GL_TEXTURE_2D, displayImage);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glClear(GL_COLOR_BUFFER_BIT);   
 
-    // VAO, shader program, and texture already bound
-    glDrawElements(GL_TRIANGLES, 6,  GL_UNSIGNED_SHORT, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    if (USE_CUDA_RASTERIZER) {
+      glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+      glBindTexture(GL_TEXTURE_2D, displayImage);
+      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, NULL);  
+      glDrawElements(GL_TRIANGLES, 6,  GL_UNSIGNED_SHORT, 0);
+    } else {
+      glDrawArrays(GL_TRIANGLES, 0, vbosize);
+    }
+
     glfwSwapBuffers(window);
   }
   glfwDestroyWindow(window);
@@ -79,7 +85,7 @@ void mainLoop() {
 //---------RUNTIME STUFF---------
 //-------------------------------
 
-void runCuda(){
+void runCuda() {
   // Map OpenGL buffer object for writing from CUDA on a single GPU
   // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use this buffer
   dptr=NULL;
@@ -113,6 +119,41 @@ void runCuda(){
   fpstracker++;
 
 }
+
+void runGL() {
+
+  //Update data
+  vbo = mesh->getVBO();
+  vbosize = mesh->getVBOsize();
+  nbo = mesh->getNBO();
+  nbosize = mesh->getNBOsize();
+  view = glm::lookAt(eye, center, glm::vec3(0, 1, 0));
+  modelview = view * glm::mat4();
+  glm::mat4 mvp = projection*modelview;
+
+  //Send the MV, MVP, and Normal Matrices
+  glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
+  glUniformMatrix4fv(proj_location, 1, GL_FALSE, glm::value_ptr(projection));
+  glm::mat3 norm_mat = glm::mat3(glm::transpose(glm::inverse(model)));
+  glUniformMatrix3fv(norm_location, 1, GL_FALSE, glm::value_ptr(norm_mat));
+
+  //Send the light position
+  glUniform3fv(light_location, 1, glm::value_ptr(lightpos));
+
+  // Send the VBO and NB0
+  glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+  glBufferData(GL_ARRAY_BUFFER, vbosize*sizeof(float), vbo, GL_DYNAMIC_DRAW);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(0);
+
+  glBindBuffer(GL_ARRAY_BUFFER, buffers[1]);
+  glBufferData(GL_ARRAY_BUFFER, nbosize*sizeof(float), nbo, GL_DYNAMIC_DRAW);
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(1);
+
+  frame++;
+  fpstracker++;
+}
   
 //-------------------------------
 //----------SETUP STUFF----------
@@ -127,7 +168,7 @@ bool init(int argc, char* argv[]) {
 
   width = 800;
   height = 800;
-  window = glfwCreateWindow(width, height, "CIS 565 Pathtracer", NULL, NULL);
+  window = glfwCreateWindow(width, height, "Voxel Rendering", NULL, NULL);
   if (!window){
       glfwTerminate();
       return false;
@@ -146,21 +187,22 @@ bool init(int argc, char* argv[]) {
   }
 
   // Initialize other stuff
-  initVAO();
-  initTextures();
-  initCuda();
-  initPBO();
-  
-  GLuint passthroughProgram;
-  passthroughProgram = initShader();
-
-  glUseProgram(passthroughProgram);
-  glActiveTexture(GL_TEXTURE0);
+  if (USE_CUDA_RASTERIZER) {
+    initCudaTextures();
+    initCudaVAO();
+    initCuda();
+    initCudaPBO();
+    initPassthroughShaders();
+    glActiveTexture(GL_TEXTURE0);
+  } else {
+    initGL();
+    initDefaultShaders();
+  }
 
   return true;
 }
 
-void initPBO(){
+void initCudaPBO(){
   // set up vertex data parameter
   int num_texels = width*height;
   int num_values = num_texels * 4;
@@ -186,7 +228,7 @@ void initCuda(){
   atexit(cleanupCuda);
 }
 
-void initTextures(){
+void initCudaTextures(){
     glGenTextures(1, &displayImage);
     glBindTexture(GL_TEXTURE_2D, displayImage);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -195,7 +237,7 @@ void initTextures(){
         GL_UNSIGNED_BYTE, NULL);
 }
 
-void initVAO(void){
+void initCudaVAO(void){
     GLfloat vertices[] =
     { 
         -1.0f, -1.0f, 
@@ -231,8 +273,7 @@ void initVAO(void){
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 }
 
-
-GLuint initShader() {
+GLuint initPassthroughShaders() {
   const char *attribLocations[] = { "Position", "Tex" };
   GLuint program = glslUtility::createDefaultProgram(attribLocations, 2);
   GLint location;
@@ -242,6 +283,30 @@ GLuint initShader() {
   {
     glUniform1i(location, 0);
   }
+
+  return program;
+}
+
+void initGL() {
+
+  glGenBuffers(2, buffers);
+  glEnable(GL_DEPTH_TEST);
+
+}
+
+GLuint initDefaultShaders() {
+  const char *attribLocations[] = { "v_position", "v_normal" };
+
+  const char *vertShader = "../../../shaders/default.vert";
+  const char *fragShader = "../../../shaders/default.frag";
+
+  GLuint program = glslUtility::createProgram(attribLocations, 2, vertShader, fragShader);
+
+  glUseProgram(program);
+  mvp_location = glGetUniformLocation(program, "u_mvpMatrix");
+  proj_location = glGetUniformLocation(program, "u_projMatrix");
+  norm_location = glGetUniformLocation(program, "u_normMatrix");
+  light_location = glGetUniformLocation(program, "u_light");
 
   return program;
 }
@@ -323,7 +388,6 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 	}
 }
 
-
 //mouse functions, changing view matrix and eyepos
 void CursorEnterCallback(GLFWwindow *window,int entered){
     if(entered == GL_TRUE)
@@ -391,9 +455,12 @@ void CursorCallback(GLFWwindow *window, double x, double y){
 
 	eye = glm::vec3(R*sin(vTheta)*sin(vPhi), R*cos(vTheta) + center.y, R*sin(vTheta)*cos(vPhi));
 	view = glm::lookAt(eye, center, glm::vec3(0,1,0));
+
 }
 
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
   R = (1.0f - 0.006f * yoffset * ZOOM_SPEED) * R;
   R = glm::clamp(R, zNear, zFar);
+  eye = glm::vec3(R*sin(vTheta)*sin(vPhi), R*cos(vTheta) + center.y, R*sin(vTheta)*cos(vPhi));
+  view = glm::lookAt(eye, center, glm::vec3(0, 1, 0));
 }

@@ -467,8 +467,6 @@ __global__ void fragmentShadePhongKernel(fragment* depthbuffer, glm::vec2 resolu
       glm::vec3 diffuse = 0.45f * clamp(glm::dot(N, L), 0.0f, 1.0f) * green;
       glm::vec3 specular = 0.45f * clamp(pow(max(glm::dot(R, E), 0.0f), specPow), 0.0f, 1.0f) * green;
       depthbuffer[index].color = ambient + diffuse + specular;
-
-      //depthbuffer[index].color = green;
     }
   }
 }
