@@ -27,6 +27,7 @@
 
 #include "rasterizeKernels.h"
 #include "utilities.h"
+#include "voxelization.h"
 
 using namespace std;
 

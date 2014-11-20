@@ -8,6 +8,14 @@
 
 #include <voxelpipe/voxelpipe.h>
 
+//Declare voxelization resolution (TODO: input these as a parameter)
+const int log_N = 7;
+const int log_T = 4;
+
+voxelpipe::FRContext<log_N, log_T>*  context;
+
+bool first_time = true;
+
 void voxelize(float* vbo, int vbosize, float* cbo, int cbosize, int* ibo, int ibosize, float* nbo, int nbosize) {
   
   //Initialize sizes
@@ -38,15 +46,14 @@ void voxelize(float* vbo, int vbosize, float* cbo, int cbosize, int* ibo, int ib
   thrust::device_vector<int4> d_triangles(h_triangles);
   thrust::device_vector<float4> d_vertices(h_vertices);
 
-  //Declar voxelization resolution (TODO: input these as a parameter)
-  const int log_N = 7;
-  const int log_T = 4;
+  if (first_time) {
+    //Create the voxelpipe context
+    context = new voxelpipe::FRContext<log_N, log_T>();
 
-  //Create voxelpipe context
-  voxelpipe::FRContext<log_N, log_T>  context;
-
-  //Reserve data for voxelpipe
-  context.reserve(n_triangles, 1024u * 1024u * 16u);
+    //Reserve data for voxelpipe
+    context->reserve(n_triangles, 2048u * 2048u * 16u);
+  }
+  first_time = false;
 
   //Define types for the voxelization
   typedef voxelpipe::FR::TileOp<voxelpipe::Bit, voxelpipe::ADD_BLENDING, log_T> tile_op_type;
@@ -58,8 +65,11 @@ void voxelize(float* vbo, int vbosize, float* cbo, int cbosize, int* ibo, int ib
   thrust::device_vector<uint8_t>  d_fb(M*M*M * sizeof(storage_type) * tile_op_type::STORAGE_SIZE);
 
   //Perform coarse and fine voxelization
-  context.coarse_raster(n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1);
-  context.fine_raster< voxelpipe::Bit, voxelpipe::BIT_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::ADD_BLENDING, voxelpipe::DefaultShader<voxelpipe::Bit> >(
+  context->coarse_raster(n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1);
+  context->fine_raster< voxelpipe::Bit, voxelpipe::BIT_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::ADD_BLENDING, voxelpipe::DefaultShader<voxelpipe::Bit> >(
       n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1, thrust::raw_pointer_cast(&d_fb.front()));
-      
+ 
+  //Move data back
+  thrust::host_vector<uint8_t> h_fb(M*M*M * sizeof(storage_type) * tile_op_type::STORAGE_SIZE);
+
 }

@@ -90,22 +90,23 @@ void runCuda() {
   // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use this buffer
   dptr=NULL;
 
-  vbo = mesh->getVBO();
-  vbosize = mesh->getVBOsize();
-
-  float newcbo[] = {0.0, 1.0, 0.0, 
-                    0.0, 0.0, 1.0, 
-                    1.0, 0.0, 0.0};
-  cbo = newcbo;
-  cbosize = 9;
-
   glm::mat4 rotationM = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(1.0f, 0.0f, 0.0f))*glm::rotate(glm::mat4(1.0f), 20.0f-0.5f*frame, glm::vec3(0.0f, 1.0f, 0.0f))*glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 
+  //Update data
+  vbo = mesh->getVBO();
+  vbosize = mesh->getVBOsize();
+  float newcbo[] = { 0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0,
+    1.0, 0.0, 0.0 };
+  cbo = newcbo;
+  cbosize = 9;
   ibo = mesh->getIBO();
   ibosize = mesh->getIBOsize();
-
   nbo = mesh->getNBO();
   nbosize = mesh->getNBOsize();
+
+  //Voxelize
+  voxelize(vbo, vbosize, cbo, cbosize, ibo, ibosize, nbo, nbosize);
 
   cudaGLMapBufferObject((void**)&dptr, pbo);
   cudaRasterizeCore(dptr, glm::vec2(width, height), rotationM, frame, vbo, vbosize, cbo, cbosize, ibo, ibosize, nbo, nbosize, eye, center, view, lightpos, mode, barycenter);
@@ -125,11 +126,21 @@ void runGL() {
   //Update data
   vbo = mesh->getVBO();
   vbosize = mesh->getVBOsize();
+  float newcbo[] = { 0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0,
+    1.0, 0.0, 0.0 };
+  cbo = newcbo;
+  cbosize = 9;
+  ibo = mesh->getIBO();
+  ibosize = mesh->getIBOsize();
   nbo = mesh->getNBO();
   nbosize = mesh->getNBOsize();
   view = glm::lookAt(eye, center, glm::vec3(0, 1, 0));
   modelview = view * glm::mat4();
   glm::mat4 mvp = projection*modelview;
+
+  //Voxelize
+  voxelize(vbo, vbosize, cbo, cbosize, ibo, ibosize, nbo, nbosize);
 
   //Send the MV, MVP, and Normal Matrices
   glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
