@@ -1,4 +1,4 @@
-images/Thumbs.db
+*Thumbs.db
 *.log
 *.tlog
 *.pdb
@@ -8,6 +8,7 @@ images/Thumbs.db
 *.suo
 *.sdf
 *.opensdf
+*.cu.deps
 windows/src
 windows/VoxelRendering/Debug
 windows/VoxelRendering/Release

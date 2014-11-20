@@ -43,7 +43,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\..\external\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\..\external\include;$(SolutionDir)..\..\external\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -79,6 +79,7 @@
     <ClInclude Include="..\..\..\src\rasterizeKernels.h" />
     <ClInclude Include="..\..\..\src\rasterizeTools.h" />
     <ClInclude Include="..\..\..\src\utilities.h" />
+    <ClInclude Include="..\..\..\src\voxelization.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\external\src\glslUtil\glslUtility.cpp" />
@@ -91,6 +92,7 @@
     <CudaCompile Include="..\..\..\src\rasterizeKernels.cu">
       <FileType>Document</FileType>
     </CudaCompile>
+    <CudeCompile Include="..\..\..\src\voxelization.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
