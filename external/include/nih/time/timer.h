@@ -31,7 +31,7 @@
 
 namespace nih {
 
-#ifdef WIN32
+//#ifdef WIN32
 
 ///
 /// A simple timer class
@@ -68,6 +68,6 @@ struct Scoped_timer
 	Timer	m_timer;
 };
 
-#endif
+//#endif
 
 } // namespace nih

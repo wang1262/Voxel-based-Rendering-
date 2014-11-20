@@ -26,6 +26,7 @@
  */
 
 #include <voxelpipe/compact_ranges.h>
+#include "thrust_arch.h"
 #include <thrust/scan.h>
 
 #define CTA_SIZE 512

@@ -151,7 +151,7 @@ __global__ void vertexShadeKernel(float* vbo, int vbosize, float* nbo, int nbosi
 		glm::mat4 transformationMatrix = projection * view * glm::mat4();
 		pos = transformationMatrix * pos;
 		glm::vec4 new_pos = pos/pos.w;
-		vbo[idxX] = new_pos.x;
+		vbo[idxX] = -new_pos.x;
 		vbo[idxY] = new_pos.y;
 		vbo[idxZ] = new_pos.z;
 
@@ -211,7 +211,7 @@ struct check_triangle {
     float x2 = t.p2.x - t.p0.x;
     float y2 = t.p2.y - t.p0.y;
 
-    return ((x1*y2 - y1*x2) > 0.0f);
+    return ((x1*y2 - y1*x2) < 0.0f);
   }
 };
 

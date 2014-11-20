@@ -54,7 +54,7 @@ namespace thrust
             } // end checked_get_current_device_properties()
 
             template <typename KernelFunction>
-            void checked_get_function_attributes(cudaFuncAttributes& attributes, KernelFunction kernel)
+            inline void checked_get_function_attributes(cudaFuncAttributes& attributes, KernelFunction kernel)
             {
               typedef void(*fun_ptr_type)();
 
@@ -89,12 +89,12 @@ namespace thrust
 
           }
 
-          size_t num_multiprocessors(const cudaDeviceProp& properties)
+          inline size_t num_multiprocessors(const cudaDeviceProp& properties)
           {
              return properties.multiProcessorCount;
           } // end num_multiprocessors() 
 
-          size_t max_active_threads_per_multiprocessor(const cudaDeviceProp& properties)
+          inline size_t max_active_threads_per_multiprocessor(const cudaDeviceProp& properties)
           {
             // index this array by [major, minor] revision
             // \see NVIDIA_CUDA_Programming_Guide_3.0.pdf p 140
@@ -110,7 +110,7 @@ namespace thrust
               return max_active_threads_by_compute_capability[properties.major][properties.minor];
           } // end max_active_threads_per_multiprocessor()
 
-          size_t max_active_blocks_per_multiprocessor(const cudaDeviceProp& properties,
+          inline size_t max_active_blocks_per_multiprocessor(const cudaDeviceProp& properties,
             const cudaFuncAttributes& attributes,
             size_t CTA_SIZE,
             size_t dynamic_smem_bytes)
@@ -140,7 +140,7 @@ namespace thrust
           }
 
           template <typename KernelFunction>
-          size_t max_active_blocks(KernelFunction kernel, const size_t CTA_SIZE, const size_t dynamic_smem_bytes)
+          inline size_t max_active_blocks(KernelFunction kernel, const size_t CTA_SIZE, const size_t dynamic_smem_bytes)
           {
             cudaDeviceProp properties;
             detail::checked_get_current_device_properties(properties);

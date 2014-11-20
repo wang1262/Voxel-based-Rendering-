@@ -27,7 +27,7 @@
 
 #include <nih/time/timer.h>
 
-#ifdef WIN32
+//#ifdef WIN32
 
 #include <windows.h>
 #include <winbase.h>
@@ -64,4 +64,4 @@ float Timer::seconds() const
 
 } // namespace nih
 
-#endif
+//#endif
