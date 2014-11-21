@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -45,7 +45,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\..\external\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\..\external\include;$(SolutionDir)..\..\external\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -84,6 +84,7 @@
     <ClInclude Include="..\..\..\src\main.h" />
     <ClInclude Include="..\..\..\src\rasterizeKernels.h" />
     <ClInclude Include="..\..\..\src\rasterizeTools.h" />
+    <ClInclude Include="..\..\..\src\sceneStructs.h" />
     <ClInclude Include="..\..\..\src\utilities.h" />
     <ClInclude Include="..\..\..\src\voxelization.h" />
   </ItemGroup>

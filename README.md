@@ -15,3 +15,13 @@ Approach
 
 
 ![Project Plan] (images/project_plan.png)
+
+##Phase I Progress:
+
+- Completed OpenGL Equivalent Rasterization Pipeline with quick swap to CUDA Rasterizer.
+- Integrated NVidia VoxelPipe
+- Added conversion kernels that can create a cube-ized mesh to render through the standard rasterizers (CUDA pipeline does not seem to be working yet for unknown reasons).
+
+![Voxel Dragon] (images/stanford_dragon_voxelized_gl.png)
+
+![Voxel Bunny] (images/bunny_voxelized_gl.png)

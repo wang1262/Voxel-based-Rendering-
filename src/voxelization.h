@@ -2,7 +2,8 @@
 #define VOXELIZATION_H
 
 #include <cuda.h>
+#include "sceneStructs.h"
 
-void voxelize(float* vbo, int vbosize, float* cbo, int cbosize, int* ibo, int ibosize, float* nbo, int nbosize);
+void voxelizeToCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out);
 
 #endif ///VOXELIZATION_H

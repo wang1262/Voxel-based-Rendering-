@@ -23,10 +23,12 @@
 #define ZOOM_SPEED 8
 #define MIDDLE_SPEED 12
 
-#define USE_CUDA_RASTERIZER 1
+#define USE_CUDA_RASTERIZER 0
+#define VOXELIZE 1
 
 #include "rasterizeKernels.h"
 #include "utilities.h"
+#include "sceneStructs.h"
 #include "voxelization.h"
 
 using namespace std;
@@ -49,6 +51,9 @@ GLFWwindow *window;
 
 obj* mesh;
 vector <obj*> meshes;
+
+//Voxelized mesh
+Mesh m_vox;
 
 int mode=0;
 bool barycenter = false;
@@ -116,6 +121,8 @@ void runGL();
 //----------SETUP STUFF----------
 //-------------------------------
 bool init(int argc, char* argv[]);
+
+void voxelizeScene();
 
 //CUDA Rasterizer Setup
 void initCudaPBO();

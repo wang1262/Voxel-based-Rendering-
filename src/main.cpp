@@ -29,6 +29,11 @@ int main(int argc, char** argv){
     return 0;
   }
 
+  //Voxelize the scene
+  if (VOXELIZE) {
+    voxelizeScene();
+  }
+
   frame = 0;
   seconds = time (NULL);
   fpstracker = 0;
@@ -93,20 +98,31 @@ void runCuda() {
   glm::mat4 rotationM = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(1.0f, 0.0f, 0.0f))*glm::rotate(glm::mat4(1.0f), 20.0f-0.5f*frame, glm::vec3(0.0f, 1.0f, 0.0f))*glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 
   //Update data
-  vbo = mesh->getVBO();
-  vbosize = mesh->getVBOsize();
-  float newcbo[] = { 0.0, 1.0, 0.0,
-    0.0, 0.0, 1.0,
-    1.0, 0.0, 0.0 };
-  cbo = newcbo;
-  cbosize = 9;
-  ibo = mesh->getIBO();
-  ibosize = mesh->getIBOsize();
-  nbo = mesh->getNBO();
-  nbosize = mesh->getNBOsize();
-
-  //Voxelize
-  voxelize(vbo, vbosize, cbo, cbosize, ibo, ibosize, nbo, nbosize);
+  if (VOXELIZE) {
+    vbo = m_vox.vbo;
+    vbosize = m_vox.vbosize;
+    float newcbo[] = { 0.0, 1.0, 0.0,
+      0.0, 0.0, 1.0,
+      1.0, 0.0, 0.0 };
+    cbo = newcbo;
+    cbosize = 9;
+    ibo = m_vox.ibo;
+    ibosize = m_vox.ibosize;
+    nbo = m_vox.nbo;
+    nbosize = m_vox.nbosize;
+  } else {
+    vbo = mesh->getVBO();
+    vbosize = mesh->getVBOsize();
+    float newcbo[] = { 0.0, 1.0, 0.0,
+      0.0, 0.0, 1.0,
+      1.0, 0.0, 0.0 };
+    cbo = newcbo;
+    cbosize = 9;
+    ibo = mesh->getIBO();
+    ibosize = mesh->getIBOsize();
+    nbo = mesh->getNBO();
+    nbosize = mesh->getNBOsize();
+  }
 
   cudaGLMapBufferObject((void**)&dptr, pbo);
   cudaRasterizeCore(dptr, glm::vec2(width, height), rotationM, frame, vbo, vbosize, cbo, cbosize, ibo, ibosize, nbo, nbosize, eye, center, view, lightpos, mode, barycenter);
@@ -124,23 +140,32 @@ void runCuda() {
 void runGL() {
 
   //Update data
-  vbo = mesh->getVBO();
-  vbosize = mesh->getVBOsize();
-  float newcbo[] = { 0.0, 1.0, 0.0,
-    0.0, 0.0, 1.0,
-    1.0, 0.0, 0.0 };
-  cbo = newcbo;
-  cbosize = 9;
-  ibo = mesh->getIBO();
-  ibosize = mesh->getIBOsize();
-  nbo = mesh->getNBO();
-  nbosize = mesh->getNBOsize();
+  if (VOXELIZE) {
+    vbo = m_vox.vbo;
+    vbosize = m_vox.vbosize;
+    cbo = m_vox.cbo;
+    cbosize = m_vox.cbosize;
+    ibo = m_vox.ibo;
+    ibosize = m_vox.ibosize;
+    nbo = m_vox.nbo;
+    nbosize = m_vox.nbosize;
+  } else {
+    vbo = mesh->getVBO();
+    vbosize = mesh->getVBOsize();
+    float newcbo[] = { 0.0, 1.0, 0.0,
+      0.0, 0.0, 1.0,
+      1.0, 0.0, 0.0 };
+    cbo = newcbo;
+    cbosize = 9;
+    ibo = mesh->getIBO();
+    ibosize = mesh->getIBOsize();
+    nbo = mesh->getNBO();
+    nbosize = mesh->getNBOsize();
+  }
+
   view = glm::lookAt(eye, center, glm::vec3(0, 1, 0));
   modelview = view * glm::mat4();
   glm::mat4 mvp = projection*modelview;
-
-  //Voxelize
-  voxelize(vbo, vbosize, cbo, cbosize, ibo, ibosize, nbo, nbosize);
 
   //Send the MV, MVP, and Normal Matrices
   glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
@@ -169,6 +194,39 @@ void runGL() {
 //-------------------------------
 //----------SETUP STUFF----------
 //-------------------------------
+
+void voxelizeScene() {
+
+  //Construct target mesh
+  Mesh m_in;
+  m_in.vbo = mesh->getVBO();
+  m_in.vbosize = mesh->getVBOsize();
+  m_in.nbo = mesh->getNBO();
+  m_in.nbosize = mesh->getNBOsize();
+  m_in.cbo = mesh->getCBO();
+  m_in.cbosize = mesh->getCBOsize();
+  m_in.ibo = mesh->getIBO();
+  m_in.ibosize = mesh->getIBOsize();
+
+  //Load cube
+  Mesh m_cube;
+  obj* cube = new obj();
+  string cubeFile = "../../../objs/cube.obj";
+  objLoader* loader = new objLoader(cubeFile, cube);
+  cube->buildVBOs();
+  m_cube.vbo = cube->getVBO();
+  m_cube.vbosize = cube->getVBOsize();
+  m_cube.nbo = cube->getNBO();
+  m_cube.nbosize = cube->getNBOsize();
+  m_cube.cbo = cube->getCBO();
+  m_cube.cbosize = cube->getCBOsize();
+  m_cube.ibo = cube->getIBO();
+  m_cube.ibosize = cube->getIBOsize();
+  delete cube;
+
+  //Voxelize
+  voxelizeToCubes(m_in, m_cube, m_vox);
+}
 
 bool init(int argc, char* argv[]) {
   glfwSetErrorCallback(errorCallback);
