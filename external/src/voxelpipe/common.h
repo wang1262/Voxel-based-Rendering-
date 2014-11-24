@@ -33,7 +33,7 @@
 
 #include <device_functions.h>
 #include <thrust/scan.h>
-#include <voxelpipe/base.h>
+#include "../../external/src/voxelpipe/base.h"
 #include "thrust_arch.h""
 
 #define VOXELPIPE_CR_PERSISTENT_THREADS     1

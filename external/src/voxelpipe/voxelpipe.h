@@ -31,19 +31,19 @@
 
 #pragma once
 
-#include <nih/basic/types.h>
-#include <nih/time/timer.h>
+#include "../../external/include/nih/basic/types.h"
+#include "../../external/include/nih/time/timer.h"
 
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 
-#include <voxelpipe/base.h>
-#include <voxelpipe/coarse.h>
-#include <voxelpipe/fine.h>
-#include <voxelpipe/abuffer.h>
-#include <voxelpipe/compact_ranges.h>
-#include <voxelpipe/b40c/LsbRadixSort/radixsort_multi_cta.cu>
-#include <voxelpipe/b40c/LsbRadixSort/radixsort_early_exit.cu>
+#include "../../external/src/voxelpipe/base.h"
+#include "../../external/src/voxelpipe/coarse.h"
+#include "../../external/src/voxelpipe/fine.h"
+#include "../../external/src/voxelpipe/abuffer.h"
+#include "../../external/src/voxelpipe/compact_ranges.h"
+#include "../../external/src/voxelpipe/b40c/LsbRadixSort/radixsort_multi_cta.cu"
+#include "../../external/src/voxelpipe/b40c/LsbRadixSort/radixsort_early_exit.cu"
 
 #include <queue>
 
@@ -214,4 +214,4 @@ private:
 
 } // namespace voxelpipe
 
-#include <voxelpipe/voxelpipe_inline.h>
+#include "../../external/src/voxelpipe/voxelpipe_inline.h"

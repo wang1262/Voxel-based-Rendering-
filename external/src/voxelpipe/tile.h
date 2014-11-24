@@ -31,7 +31,7 @@
 
 #pragma once
 
-#include <voxelpipe/common.h>
+#include "../../external/src/voxelpipe/common.h"
 
 namespace voxelpipe {
 

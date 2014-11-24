@@ -25,7 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <voxelpipe/compact_ranges.h>
+#include "../../external/src/voxelpipe/compact_ranges.h"
 #include "thrust_arch.h"
 #include <thrust/scan.h>
 

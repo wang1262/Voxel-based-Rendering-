@@ -32,7 +32,7 @@
 #pragma once
 
 #include <device_functions.h>
-#include <voxelpipe/base.h>
+#include "../../external/src/voxelpipe/base.h"
 
 namespace voxelpipe {
 

@@ -101,6 +101,7 @@ float R = glm::length(eye);
 //-------------------------------
 
 int main(int argc, char** argv);
+void loadMultipleObj(int choice, int type);
 
 
 //-------------------------------
@@ -146,6 +147,7 @@ void deleteTexture(GLuint* tex);
 //------------------------------
 //-------GLFW CALLBACKS---------
 //------------------------------
+
 void mainLoop();
 void errorCallback(int error, const char *description);
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
