@@ -11,7 +11,7 @@
 
 //Declare voxelization resolution (TODO: input these as a parameter)
 const int log_N = 8;
-const int log_T = 3; //TODO: Handle the case where this is > 3 and the fb tile compaction is different
+const int log_T = 4;
 
 const float CUBE_MESH_SCALE = 0.1;
 
@@ -21,19 +21,28 @@ bool first_time = true;
 
 template<typename storage_type>
 __global__ void getOccupiedVoxelCenters(void* fb, int M, int T, float3 bbox0, float3 t_d, float3 p_d, float3* centers) {
-  int pix_num = threadIdx.x;
-  int tile_num = blockIdx.x;
-
   int T3 = T*T*T;
   int M3 = M*M*M;
 
+  int pix_num = (blockIdx.x * 256 % T3) + threadIdx.x;
+  int tile_num = blockIdx.x * 256 / T3;
+
   if (pix_num < T3 && tile_num < M3) {
     //TODO: Is there any benefit in making this shared?
-    storage_type* tile = (storage_type*)fb + tile_num*T3;
+    storage_type* tile;
 
     float3 cent;
 
-    if (tile[pix_num]) {
+    bool is_occupied;
+    if (T <= 8) {
+      tile = (storage_type*)fb + tile_num*T3;
+      is_occupied = tile[pix_num];
+    } else {
+      tile = (storage_type*)fb + tile_num*(T3 >> 5);
+      is_occupied = (tile[pix_num >> 5] & (1 << (pix_num & 31)));
+    }
+
+    if (is_occupied) {
       //Compute x,y,z pos
       int tx = tile_num / (M*M) % M;
       int px = pix_num / (T*T) % T;
@@ -152,7 +161,7 @@ void voxelizeToCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
   typedef typename tile_op_type::storage_type storage_type;
 
   //Initialize the result data on the device
-  thrust::device_vector<int32_t>  d_fb(M*M*M * tile_op_type::STORAGE_SIZE);
+  thrust::device_vector<storage_type>  d_fb(M*M*M * tile_op_type::STORAGE_SIZE);
 
   //Perform coarse and fine voxelization
   context->coarse_raster(n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1);
@@ -162,9 +171,9 @@ void voxelizeToCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
   //TODO: Consider replacing this next part with scan/compact/decode rather than decode/compact
 
   //Get voxel centers
-  int numVoxels = M*M*M * tile_op_type::STORAGE_SIZE;
+  int numVoxels = N*N*N;
   thrust::device_vector<float3> d_centers(numVoxels);
-  getOccupiedVoxelCenters<storage_type> <<<M*M*M, tile_op_type::STORAGE_SIZE>>>(thrust::raw_pointer_cast(&d_fb.front()), M, T, bbox0, t_d, p_d, thrust::raw_pointer_cast(&d_centers.front()));
+  getOccupiedVoxelCenters<storage_type> <<<N*N*N, 256>>>(thrust::raw_pointer_cast(&d_fb.front()), M, T, bbox0, t_d, p_d, thrust::raw_pointer_cast(&d_centers.front()));
   cudaDeviceSynchronize();
 
   //Stream Compact voxel centers to remove the empties
