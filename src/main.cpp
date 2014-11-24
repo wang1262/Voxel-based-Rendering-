@@ -31,7 +31,7 @@ int main(int argc, char** argv){
 	cout<<"Press ENTER after the number input :)\n"<<endl;
 	cin>>choice;
 
-	string local_path = "C:\\Users\\JiaweiWang\\Documents\\GitHub\\Voxel-based-Rendering-\\objs\\";
+	string local_path = "../../../objs/";
 	string data = local_path+ "2cows.obj";
 	if(choice==1)
 		data = local_path+ "dragon.obj";
@@ -75,7 +75,7 @@ int main(int argc, char** argv){
 
 /*void loadMultipleObj(int choice, int type){
 
-string Path = "C:\\Users\\JiaweiWang\\Documents\\GitHub\\Voxel-based-Rendering-\\objs\\";
+string Path = "../../../objs/";
 string data;
 
 if(choice==1){	
