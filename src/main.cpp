@@ -53,17 +53,18 @@ int main(int argc, char** argv){
 		return 0;
 	}
 
-	//Voxelize the scene
-	if (VOXELIZE) {
-		voxelizeScene();
-	}
-
 	frame = 0;
 	seconds = time (NULL);
 	fpstracker = 0;
 
 	// Launch CUDA/GL
 	if (init(argc, argv)) {
+
+    //Voxelize the scene
+    if (VOXELIZE) {
+      voxelizeScene();
+    }
+
 		// GLFW main loop
 		mainLoop();
 	}
@@ -146,15 +147,16 @@ void runCuda() {
 
 	glm::mat4 rotationM = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(1.0f, 0.0f, 0.0f))*glm::rotate(glm::mat4(1.0f), 20.0f-0.5f*frame, glm::vec3(0.0f, 1.0f, 0.0f))*glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 
+  float newcbo[] = { 0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0,
+    1.0, 0.0, 0.0 };
+
 	//Update data
 	if (VOXELIZE) {
 		vbo = m_vox.vbo;
 		vbosize = m_vox.vbosize;
-		float newcbo[] = { 0.0, 1.0, 0.0,
-			0.0, 0.0, 1.0,
-			1.0, 0.0, 0.0 };
-		cbo = newcbo;
-		cbosize = 9;
+    cbo = newcbo;
+    cbosize = 9;
 		ibo = m_vox.ibo;
 		ibosize = m_vox.ibosize;
 		nbo = m_vox.nbo;
@@ -162,9 +164,6 @@ void runCuda() {
 	} else {
 		vbo = mesh->getVBO();
 		vbosize = mesh->getVBOsize();
-		float newcbo[] = { 0.0, 1.0, 0.0,
-			0.0, 0.0, 1.0,
-			1.0, 0.0, 0.0 };
 		cbo = newcbo;
 		cbosize = 9;
 		ibo = mesh->getIBO();
@@ -188,12 +187,16 @@ void runCuda() {
 
 void runGL() {
 
+  float newcbo[] = { 0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0,
+    1.0, 0.0, 0.0 };
+
 	//Update data
 	if (VOXELIZE) {
 		vbo = m_vox.vbo;
 		vbosize = m_vox.vbosize;
-		cbo = m_vox.cbo;
-		cbosize = m_vox.cbosize;
+    cbo = newcbo;
+    cbosize = 9;
 		ibo = m_vox.ibo;
 		ibosize = m_vox.ibosize;
 		nbo = m_vox.nbo;
@@ -201,9 +204,6 @@ void runGL() {
 	} else {
 		vbo = mesh->getVBO();
 		vbosize = mesh->getVBOsize();
-		float newcbo[] = { 0.0, 1.0, 0.0,
-			0.0, 0.0, 1.0,
-			1.0, 0.0, 0.0 };
 		cbo = newcbo;
 		cbosize = 9;
 		ibo = mesh->getIBO();

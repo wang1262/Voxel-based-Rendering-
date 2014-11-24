@@ -20,8 +20,12 @@ Approach
 
 - Completed OpenGL Equivalent Rasterization Pipeline with quick swap to CUDA Rasterizer.
 - Integrated NVidia VoxelPipe
-- Added conversion kernels that can create a cube-ized mesh to render through the standard rasterizers (CUDA pipeline does not seem to be working yet for unknown reasons).
+- Added conversion kernels that can create a cube-ized mesh to render through the standard rasterizers. Works with both OpenGL and CUDA rasterization.
 
-![Voxel Dragon] (images/stanford_dragon_voxelized_gl.png)
+OpenGL Stanford Dragon:
+![Voxel Dragon GL] (images/stanford_dragon_voxelized_gl.png)
+
+CUDA Stanford Dragon:
+![Voxel Dragon CUDA] (images/stanford_dragon_voxelized_cuda.png)
 
 ![Voxel Bunny] (images/bunny_voxelized_gl.png)

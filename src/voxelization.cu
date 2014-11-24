@@ -95,7 +95,7 @@ __global__ void createCubeMesh(float3* voxel_centers, float scale_factor, int nu
     }
 
     for (int i = 0; i < cube_ibosize; i++) {
-      out_ibo[ibo_offset + i] = cube_ibo[i] + vbo_offset;
+      out_ibo[ibo_offset + i] = cube_ibo[i] + ibo_offset;
     }
 
   }
