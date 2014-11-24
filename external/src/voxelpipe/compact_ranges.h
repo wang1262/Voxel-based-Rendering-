@@ -27,7 +27,7 @@
 
 #pragma once
 
-#include "../../external/src/voxelpipe/base.h"
+#include <voxelpipe/base.h>
 #include <thrust/device_vector.h>
 
 namespace voxelpipe {
