@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.0.0)
 #set (CMAKE_C_COMPILER clang)
 #set (CMAKE_CXX_COMPILER clang++)
 
-project(Project3-Pathtracer)
+project(VoxelRendering)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
@@ -89,11 +89,14 @@ endif()
 #we just need the actual files being fed directly to the compiler
 set(SOURCE_FILES "src/main.cpp")
 set(SOURCE_FILES ${SOURCE_FILES} "src/rasterizeKernels.cu")
+set(SOURCE_FILES ${SOURCE_FILES} "src/voxelization.cu")
 set(SOURCE_FILES ${SOURCE_FILES} "src/utilities.cpp")
 set(SOURCE_FILES ${SOURCE_FILES} "${EXTERNAL}/src/glslUtil/glslUtility.cpp")
 set(SOURCE_FILES ${SOURCE_FILES} "${EXTERNAL}/src/objUtil/obj.cpp")
 set(SOURCE_FILES ${SOURCE_FILES} "${EXTERNAL}/src/objUtil/objloader.cpp")
+set(SOURCE_FILES ${SOURCE_FILES} "${EXTERNAL}/src/compact_ranges.cu")
+set(SOURCE_FILES ${SOURCE_FILES} "${EXTERNAL}/src/utils.cu")
 
-cuda_add_executable(Project3-Pathtracer ${SOURCE_FILES} OPTIONS -arch=sm_20)
+cuda_add_executable(VoxelRendering ${SOURCE_FILES} OPTIONS -arch=sm_20)
 
-target_link_libraries(Project3-Pathtracer ${CORELIBS})
+target_link_libraries(VoxelRendering ${CORELIBS})
