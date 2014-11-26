@@ -1,9 +1,9 @@
 
 #include "main.h"
 
-string path_prefix = "";
-#ifdef WIN32
-path_prefix = "../../";
+string path_prefix = "../../";
+#if defined(__GNUC__) 
+path_prefix = "";
 #endif
 
 //-------------------------------
