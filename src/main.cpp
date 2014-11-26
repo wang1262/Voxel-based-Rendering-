@@ -1,6 +1,11 @@
 
 #include "main.h"
 
+string path_prefix = "";
+#ifdef WIN32
+path_prefix = "../../";
+#endif
+
 //-------------------------------
 //-------------MAIN--------------
 //-------------------------------
@@ -31,7 +36,7 @@ int main(int argc, char** argv){
 	cout<<"Press ENTER after the number input :)\n"<<endl;
 	cin>>choice;
 
-	string local_path = "../../../objs/";
+	string local_path = path_prefix + "../objs/";
 	string data = local_path+ "2cows.obj";
 	if(choice==1)
 		data = local_path+ "dragon.obj";
@@ -76,7 +81,7 @@ int main(int argc, char** argv){
 
 /*void loadMultipleObj(int choice, int type){
 
-string Path = "../../../objs/";
+string Path = path_prefix + "../objs/";
 string data;
 
 if(choice==1){	
@@ -260,7 +265,7 @@ void voxelizeScene() {
 	//Load cube
 	Mesh m_cube;
 	obj* cube = new obj();
-	string cubeFile = "../../../objs/cube.obj";
+	string cubeFile = path_prefix + "../objs/cube.obj";
 	objLoader* loader = new objLoader(cubeFile, cube);
 	cube->buildVBOs();
 	m_cube.vbo = cube->getVBO();
@@ -415,8 +420,10 @@ void initGL() {
 GLuint initDefaultShaders() {
 	const char *attribLocations[] = { "v_position", "v_normal" };
 
-	const char *vertShader = "../../../shaders/default.vert";
-	const char *fragShader = "../../../shaders/default.frag";
+  string vs = path_prefix + "../shaders/default.vert";
+  string fs = path_prefix + "../shaders/default.frag";
+	const char *vertShader = vs.c_str();
+  const char *fragShader = fs.c_str();
 
 	GLuint program = glslUtility::createProgram(attribLocations, 2, vertShader, fragShader);
 

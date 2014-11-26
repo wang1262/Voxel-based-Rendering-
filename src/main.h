@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string>
 #include <time.h>
-#include "glm\gtc\matrix_transform.hpp"
+#include <glm/gtc/matrix_transform.hpp>
 
 #define MOUSE_SPEED 2.0*0.0001f
 #define ZOOM_SPEED 8

@@ -887,20 +887,20 @@ struct TileIO<Float4,FP32S_FORMAT,LOG_TILE_SIZE,CTA_SIZE>
         }
     }
     // save tile to gmem
-    template <int32 CTA_SIZE>
+    template <int32 CTA_SZ>
     __device__ static void save(
         const storage_type* storage,
         void*               fb,
         int32               tile_id)
     {
-        const int32 WORDS_PER_THREAD = (STORAGE_SIZE + CTA_SIZE-1) / CTA_SIZE;
+        const int32 WORDS_PER_THREAD = (STORAGE_SIZE + CTA_SZ-1) / CTA_SZ;
 
         float* tile = (float*)(fb) + tile_id * STORAGE_SIZE;
 
         // loop through the number of words assigned to each thread
         for (int32 p = 0; p < WORDS_PER_THREAD; ++p)
         {
-            const int32 pixel = p * CTA_SIZE + threadIdx.x;
+            const int32 pixel = p * CTA_SZ + threadIdx.x;
             if (pixel < STORAGE_SIZE)
                 tile[ pixel ] = storage[ pixel ];
         }
@@ -1093,7 +1093,7 @@ __global__ void tile_blender(
     void*           fb)
 {
     typedef TileOp<VoxelType,BlendingMode,log_TILE_SIZE>                  tile_op_type;
-    typedef typename TileIO<VoxelType,VoxelFormat,log_TILE_SIZE,CTA_SIZE> tile_io_type;
+    typedef TileIO<VoxelType,VoxelFormat,log_TILE_SIZE,CTA_SIZE> tile_io_type;
     typedef typename tile_op_type::storage_type storage_type;
 
     const int32 WORDS_PER_THREAD = (tile_op_type::STORAGE_SIZE + CTA_SIZE-1) / CTA_SIZE;

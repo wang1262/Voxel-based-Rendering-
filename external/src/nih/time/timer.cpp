@@ -27,8 +27,7 @@
 
 #include <nih/time/timer.h>
 
-//#ifdef WIN32
-
+#ifdef WIN32
 #include <windows.h>
 #include <winbase.h>
 
@@ -64,4 +63,40 @@ float Timer::seconds() const
 
 } // namespace nih
 
-//#endif
+#else
+
+#define BILLION  1000000000L;
+
+#include <time.h>
+
+namespace nih {
+
+Timer::Timer()
+{
+
+}
+
+void Timer::start()
+{
+  timespec start;
+  clock_gettime(CLOCK_REALTIME, &start);
+  m_start = start.tv_sec + start.tv_nsec/BILLION;
+}
+
+void Timer::stop()
+{
+  timespec stop;
+  clock_gettime(CLOCK_REALTIME, &stop);
+  m_stop = stop.tv_sec + stop.tv_nsec/BILLION;
+}
+
+float Timer::seconds() const
+{
+  return float(m_stop - m_start);
+}
+
+} //namespace nih
+
+#undef BILLION
+
+#endif

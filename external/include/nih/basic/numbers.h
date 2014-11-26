@@ -40,6 +40,11 @@ namespace nih {
 #define M_PI 3.141592653589793238462643383279502884197169399375105820974944592
 #define M_PI_2 (2.0 * M_PI)
 
+#if defined(__GNUC__)
+#define _finite(n) finite(n)
+#define _isnan(n) isnan(n)
+#endif
+
 #include <float.h>
 
 inline bool is_finite(const double x) { return _finite(x) != 0; }
