@@ -27,7 +27,7 @@ int main(int argc, char** argv){
 	}*/
 
 	int choice = 2;
-	cout<<"Please type which scene to load? '1'(dragon), '2'(2 cows), '3'(all_three)."<<endl;
+	cout<<"Please type which scene to load? '1'(dragon), '2'(2 cows), '3'(all_three), '4'(cow_tex)."<<endl;
 	cout<<"Press ENTER after the number input :)\n"<<endl;
 	cin>>choice;
 
@@ -39,6 +39,8 @@ int main(int argc, char** argv){
 		data = local_path+ "2cows.obj";
 	else if(choice==3)
 		data = local_path+ "all_three.obj";
+  else if (choice == 4)
+    data = local_path + "cow_tex.obj";
 
 	mesh = new obj();
 	objLoader* loader = new objLoader(data, mesh);
@@ -47,11 +49,13 @@ int main(int argc, char** argv){
 	delete loader;
 	loadedScene = true;
 
+  /*
 	if(!loadedScene){
 		cout << "Usage: mesh=[obj file]" << endl;
 		system("PAUSE");
 		return 0;
 	}
+  */
 
 	frame = 0;
 	seconds = time (NULL);

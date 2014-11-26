@@ -28,7 +28,6 @@ obj::~obj(){
 		delete faceboxes[i];
 	}
 
-
 }
 
 void obj::buildVBOs(){
@@ -36,11 +35,13 @@ void obj::buildVBOs(){
 	vector<float> VBOvec;
 	vector<float> NBOvec;
 	vector<int> IBOvec;
+  vector<float> TBOvec;
 	int index = 0;
 	bool genNormals = false;
 	if(faces.size()!=facenormals.size()){
 		genNormals = true;
 	}
+  bool hasTexture = facetextures.size() > 0;
 	for(int k = 0; k<faces.size(); k++){
 
 		if(isConvex(faces[k])==true){
@@ -71,6 +72,13 @@ void obj::buildVBOs(){
 					NBOvec.push_back(n[0]); NBOvec.push_back(n[1]); NBOvec.push_back(n[2]); //NBOvec.push_back(0.0f);
 				}
 
+        if (hasTexture) {
+          vector<int> facetexture = facetextures[k];
+          TBOvec.push_back(texturecoords[facetexture[0]].x); TBOvec.push_back(texturecoords[facetexture[0]].y);
+          TBOvec.push_back(texturecoords[facetexture[1]].x); TBOvec.push_back(texturecoords[facetexture[1]].y);
+          TBOvec.push_back(texturecoords[facetexture[2]].x); TBOvec.push_back(texturecoords[facetexture[2]].y);
+        }
+
 				IBOvec.push_back(index+0); IBOvec.push_back(index+1); IBOvec.push_back(index+2);
 
 				index=index+3;
@@ -81,9 +89,11 @@ void obj::buildVBOs(){
 	vbo = new float[VBOvec.size()];
 	nbo = new float[NBOvec.size()];
 	ibo = new int[IBOvec.size()];
+  tbo = new float[TBOvec.size()];
 	vbosize = (int)VBOvec.size();
 	nbosize = (int)NBOvec.size();
 	ibosize = (int)IBOvec.size();
+  tbosize = (int)TBOvec.size();
 	for(int i=0; i<VBOvec.size(); i++){
 		vbo[i] = VBOvec[i];
 	}
@@ -93,6 +103,9 @@ void obj::buildVBOs(){
 	for(int i=0; i<IBOvec.size(); i++){
 		ibo[i] = IBOvec[i];
 	}
+  for (int i = 0; i<TBOvec.size(); i++){
+    tbo[i] = TBOvec[i];
+  }
 	setColor(glm::vec3(.4,.4,.4));
 }
 
