@@ -2,7 +2,7 @@ A Voxel Rendering Pipeline in CUDA for Real-time Indirect Illumination
 ======================
 
 Dave Kotfis and Jiawei Wang
-CIS 565 Final Project – Fall 2014
+CIS 565 Final Project â€“ Fall 2014
 
 Goal - Implement a voxel rendering pipeline in CUDA capable of real-time global illumination.
 
@@ -29,3 +29,8 @@ CUDA Stanford Dragon:
 ![Voxel Dragon CUDA] (images/stanford_dragon_voxelized_cuda.png)
 
 ![Voxel Bunny] (images/bunny_voxelized_gl.png)
+
+
+Building Voxel Octree
+---------------------
+Reference: [Simple Octree](https://github.com/brandonpelfrey/SimpleOctree)
