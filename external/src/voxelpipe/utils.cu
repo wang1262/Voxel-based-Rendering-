@@ -25,7 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../../external/src/voxelpipe/utils.h"
+#include <voxelpipe/utils.h>
 
 texture<float4> tex_vertices;
 texture<int4>   tex_triangles;
