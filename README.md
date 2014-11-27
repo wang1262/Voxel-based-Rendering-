@@ -2,7 +2,7 @@ A Voxel Rendering Pipeline in CUDA for Real-time Indirect Illumination
 ======================
 
 Dave Kotfis and Jiawei Wang
-CIS 565 Final Project – Fall 2014
+CIS 565 Final Project â€“ Fall 2014
 
 Goal - Implement a voxel rendering pipeline in CUDA capable of real-time global illumination.
 
@@ -20,8 +20,17 @@ Approach
 
 - Completed OpenGL Equivalent Rasterization Pipeline with quick swap to CUDA Rasterizer.
 - Integrated NVidia VoxelPipe
-- Added conversion kernels that can create a cube-ized mesh to render through the standard rasterizers (CUDA pipeline does not seem to be working yet for unknown reasons).
+- Added conversion kernels that can create a cube-ized mesh to render through the standard rasterizers. Works with both OpenGL and CUDA rasterization.
 
-![Voxel Dragon] (images/stanford_dragon_voxelized_gl.png)
+OpenGL Stanford Dragon:
+![Voxel Dragon GL] (images/stanford_dragon_voxelized_gl.png)
+
+CUDA Stanford Dragon:
+![Voxel Dragon CUDA] (images/stanford_dragon_voxelized_cuda.png)
 
 ![Voxel Bunny] (images/bunny_voxelized_gl.png)
+
+
+Building Voxel Octree
+---------------------
+Reference: [Simple Octree](https://github.com/brandonpelfrey/SimpleOctree)

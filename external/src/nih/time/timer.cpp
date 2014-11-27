@@ -27,41 +27,77 @@
 
 #include <nih/time/timer.h>
 
-//#ifdef WIN32
+#if defined (__GNUC__)
+
+#define BILLION  1000000000L;
+
+#include <time.h>
+
+namespace nih {
+
+Timer::Timer()
+{
+
+}
+
+void Timer::start()
+{
+  timespec start;
+  clock_gettime(CLOCK_REALTIME, &start);
+  m_start = start.tv_sec + start.tv_nsec/BILLION;
+}
+
+void Timer::stop()
+{
+  timespec stop;
+  clock_gettime(CLOCK_REALTIME, &stop);
+  m_stop = stop.tv_sec + stop.tv_nsec/BILLION;
+}
+
+float Timer::seconds() const
+{
+  return float(m_stop - m_start);
+}
+
+} //namespace nih
+
+#undef BILLION
+
+#else
 
 #include <windows.h>
 #include <winbase.h>
 
 namespace nih {
 
-Timer::Timer()
-{
-	LARGE_INTEGER freq;
-	QueryPerformanceFrequency(&freq);
+  Timer::Timer()
+  {
+    LARGE_INTEGER freq;
+    QueryPerformanceFrequency(&freq);
 
-	m_freq = freq.QuadPart;
-}
+    m_freq = freq.QuadPart;
+  }
 
-void Timer::start()
-{
-	LARGE_INTEGER tick;
-	QueryPerformanceCounter(&tick);
+  void Timer::start()
+  {
+    LARGE_INTEGER tick;
+    QueryPerformanceCounter(&tick);
 
-	m_start = tick.QuadPart;
-}
-void Timer::stop()
-{
-	LARGE_INTEGER tick;
-	QueryPerformanceCounter(&tick);
+    m_start = tick.QuadPart;
+  }
+  void Timer::stop()
+  {
+    LARGE_INTEGER tick;
+    QueryPerformanceCounter(&tick);
 
-	m_stop = tick.QuadPart;
-}
+    m_stop = tick.QuadPart;
+  }
 
-float Timer::seconds() const
-{
-	return float(m_stop - m_start) / float(m_freq);
-}
+  float Timer::seconds() const
+  {
+    return float(m_stop - m_start) / float(m_freq);
+  }
 
 } // namespace nih
 
-//#endif
+#endif

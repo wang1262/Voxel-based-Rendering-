@@ -11,7 +11,7 @@
 
 //Declare voxelization resolution (TODO: input these as a parameter)
 const int log_N = 8;
-const int log_T = 3; //TODO: Handle the case where this is > 3 and the fb tile compaction is different
+const int log_T = 4;
 
 const float CUBE_MESH_SCALE = 0.1;
 
@@ -19,51 +19,65 @@ voxelpipe::FRContext<log_N, log_T>*  context;
 
 bool first_time = true;
 
-template<typename storage_type>
-__global__ void getOccupiedVoxelCenters(void* fb, int M, int T, float3 bbox0, float3 t_d, float3 p_d, float3* centers) {
-  int pix_num = threadIdx.x;
-  int tile_num = blockIdx.x;
+__device__ float3 getCenterFromIndex(int idx, int M, int T, float3 bbox0, float3 t_d, float3 p_d) {
+  int T3 = T*T*T;
+  int tile_num = idx / T3;
+  int pix_num = idx % T3;
+  float3 cent;
+  int tx = tile_num / (M*M) % M;
+  int px = pix_num / (T*T) % T;
+  int ty = tile_num / M % M;
+  int py = pix_num / T % T;
+  int tz = tile_num % M;
+  int pz = pix_num % T;
+  cent.x = bbox0.x + tx*t_d.x + px*p_d.x;
+  cent.y = bbox0.y + ty*t_d.y + py*p_d.y;
+  cent.z = bbox0.z + tz*t_d.z + pz*p_d.z;
+  return cent;
+}
 
+template<typename storage_type>
+__global__ void getOccupiedVoxels(void* fb, int M, int T, int* voxels) {
   int T3 = T*T*T;
   int M3 = M*M*M;
 
+  int pix_num = (blockIdx.x * 256 % T3) + threadIdx.x;
+  int tile_num = blockIdx.x * 256 / T3;
+
   if (pix_num < T3 && tile_num < M3) {
     //TODO: Is there any benefit in making this shared?
-    storage_type* tile = (storage_type*)fb + tile_num*T3;
+    storage_type* tile;
 
     float3 cent;
 
-    if (tile[pix_num]) {
-      //Compute x,y,z pos
-      int tx = tile_num / (M*M) % M;
-      int px = pix_num / (T*T) % T;
-      int ty = tile_num / M % M;
-      int py = pix_num / T % T;
-      int tz = tile_num % M;
-      int pz = pix_num % T;
-      cent.x = bbox0.x + tx*t_d.x + px*p_d.x;
-      cent.y = bbox0.y + ty*t_d.y + py*p_d.y;
-      cent.z = bbox0.z + tz*t_d.z + pz*p_d.z;
-      centers[tile_num*T3 + pix_num] = cent;
+    bool is_occupied;
+    if (T <= 8) {
+      tile = (storage_type*)fb + tile_num*T3;
+      is_occupied = tile[pix_num];
     } else {
-      float nan = __int_as_float(0xFFE00000);
-      cent = make_float3(nan, nan, nan);
-      centers[tile_num*T3 + pix_num] = cent;
+      tile = (storage_type*)fb + tile_num*(T3 >> 5);
+      is_occupied = (tile[pix_num >> 5] & (1 << (pix_num & 31)));
+    }
+
+    if (is_occupied) {
+      voxels[tile_num*T3 + pix_num] = tile_num*T3 + pix_num;
+    } else {
+      voxels[tile_num*T3 + pix_num] = -1;
     }
   }
 
 }
 
-//Thrust predicate for removal of empty voxel centers
-struct check_center {
+//Thrust predicate for removal of empty voxels
+struct check_voxel {
   __host__ __device__
-    bool operator() (const float3& c) {
-    return !(isnan(c.x) || isnan(c.y) || isnan(c.z));
+    bool operator() (const int& c) {
+    return (c != -1);
   }
 };
 
-__global__ void createCubeMesh(float3* voxel_centers, float scale_factor, int num_voxels, float* cube_vbo, int cube_vbosize, int* cube_ibo, int cube_ibosize, 
-                                float* cube_nbo, float* out_vbo, int* out_ibo, float* out_nbo) {
+__global__ void createCubeMesh(int* voxels, int M, int T, float3 bbox0, float3 t_d, float3 p_d, float scale_factor, int num_voxels, float* cube_vbo, 
+                                int cube_vbosize, int* cube_ibo, int cube_ibosize, float* cube_nbo, float* out_vbo, int* out_ibo, float* out_nbo) {
 
   //Get the index for the thread
   int idx = blockIdx.x*blockDim.x + threadIdx.x;
@@ -72,7 +86,7 @@ __global__ void createCubeMesh(float3* voxel_centers, float scale_factor, int nu
 
     int vbo_offset = idx * cube_vbosize;
     int ibo_offset = idx * cube_ibosize;
-    float3 center = voxel_centers[idx];
+    float3 center = getCenterFromIndex(voxels[idx], M, T, bbox0, t_d, p_d);
 
     for (int i = 0; i < cube_vbosize; i++) {
       if (i % 3 == 0) {
@@ -86,7 +100,7 @@ __global__ void createCubeMesh(float3* voxel_centers, float scale_factor, int nu
     }
 
     for (int i = 0; i < cube_ibosize; i++) {
-      out_ibo[ibo_offset + i] = cube_ibo[i] + vbo_offset;
+      out_ibo[ibo_offset + i] = cube_ibo[i] + ibo_offset;
     }
 
   }
@@ -152,24 +166,24 @@ void voxelizeToCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
   typedef typename tile_op_type::storage_type storage_type;
 
   //Initialize the result data on the device
-  thrust::device_vector<int32_t>  d_fb(M*M*M * tile_op_type::STORAGE_SIZE);
+  thrust::device_vector<storage_type>  d_fb(M*M*M * tile_op_type::STORAGE_SIZE);
 
   //Perform coarse and fine voxelization
   context->coarse_raster(n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1);
-  context->fine_raster< voxelpipe::Bit, voxelpipe::BIT_FORMAT, voxelpipe::CONSERVATIVE_RASTER, voxelpipe::ADD_BLENDING, voxelpipe::DefaultShader<voxelpipe::Bit> >(
+  context->fine_raster< voxelpipe::Bit, voxelpipe::BIT_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::ADD_BLENDING, voxelpipe::DefaultShader<voxelpipe::Bit> >(
       n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1, thrust::raw_pointer_cast(&d_fb.front()));
   
   //TODO: Consider replacing this next part with scan/compact/decode rather than decode/compact
 
   //Get voxel centers
-  int numVoxels = M*M*M * tile_op_type::STORAGE_SIZE;
-  thrust::device_vector<float3> d_centers(numVoxels);
-  getOccupiedVoxelCenters<storage_type> <<<M*M*M, tile_op_type::STORAGE_SIZE>>>(thrust::raw_pointer_cast(&d_fb.front()), M, T, bbox0, t_d, p_d, thrust::raw_pointer_cast(&d_centers.front()));
+  int numVoxels = N*N*N;
+  thrust::device_vector<int> d_vox(numVoxels);
+  getOccupiedVoxels<storage_type> <<<N*N*N, 256>>>(thrust::raw_pointer_cast(&d_fb.front()), M, T, thrust::raw_pointer_cast(&d_vox.front()));
   cudaDeviceSynchronize();
 
-  //Stream Compact voxel centers to remove the empties
-  thrust::device_vector<float3> d_centers2(numVoxels);
-  numVoxels = thrust::copy_if(&d_centers.front(), &d_centers.front() + numVoxels, &d_centers2.front(), check_center()) - &d_centers2.front();
+  //Stream Compact voxels to remove the empties
+  thrust::device_vector<int> d_vox2(numVoxels);
+  numVoxels = thrust::copy_if(&d_vox.front(), &d_vox.front() + numVoxels, &d_vox2.front(), check_voxel()) - &d_vox2.front();
 
   //Move cube data to GPU
   thrust::device_vector<float> d_vbo_cube(m_cube.vbo, m_cube.vbo + m_cube.vbosize);
@@ -191,7 +205,7 @@ void voxelizeToCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
   }
 
   //Create resulting cube-ized mesh
-  createCubeMesh <<<(numVoxels / 256) + 1, 256 >>>(thrust::raw_pointer_cast(&d_centers2.front()), vox_size / CUBE_MESH_SCALE, numVoxels, thrust::raw_pointer_cast(&d_vbo_cube.front()), 
+  createCubeMesh << <(numVoxels / 256) + 1, 256 >> >(thrust::raw_pointer_cast(&d_vox2.front()), M, T, bbox0, t_d, p_d, vox_size / CUBE_MESH_SCALE, numVoxels, thrust::raw_pointer_cast(&d_vbo_cube.front()),
     m_cube.vbosize, thrust::raw_pointer_cast(&d_ibo_cube.front()), m_cube.ibosize, thrust::raw_pointer_cast(&d_nbo_cube.front()), d_vbo_out, d_ibo_out, d_nbo_out);
 
   //Store output sizes

@@ -1,11 +1,23 @@
 
 #include "main.h"
 
+string path_prefix = "../../";
+
 //-------------------------------
 //-------------MAIN--------------
 //-------------------------------
 
+// Used for testing
+std::vector<Vec3> points;
+Octree *octree;
+OctreePoint *octreePoints;
+Vec3 qmin, qmax;
+
 int main(int argc, char** argv){
+
+#if defined(__GNUC__)
+  path_prefix = "";
+#endif
 
 	bool loadedScene = false;
 	/*for(int i=1; i<argc; i++){
@@ -27,11 +39,11 @@ int main(int argc, char** argv){
 	}*/
 
 	int choice = 2;
-	cout<<"Please type which scene to load? '1'(dragon), '2'(2 cows), '3'(all_three)."<<endl;
+	cout<<"Please type which scene to load? '1'(dragon), '2'(2 cows), '3'(all_three), '4'(cow_tex)."<<endl;
 	cout<<"Press ENTER after the number input :)\n"<<endl;
 	cin>>choice;
 
-	string local_path = "../../../objs/";
+	string local_path = path_prefix + "../objs/";
 	string data = local_path+ "2cows.obj";
 	if(choice==1)
 		data = local_path+ "dragon.obj";
@@ -39,6 +51,8 @@ int main(int argc, char** argv){
 		data = local_path+ "2cows.obj";
 	else if(choice==3)
 		data = local_path+ "all_three.obj";
+  else if (choice == 4)
+    data = local_path + "cow_tex.obj";
 
 	mesh = new obj();
 	objLoader* loader = new objLoader(data, mesh);
@@ -47,16 +61,6 @@ int main(int argc, char** argv){
 	delete loader;
 	loadedScene = true;
 
-	if(!loadedScene){
-		cout << "Usage: mesh=[obj file]" << endl;
-		system("PAUSE");
-		return 0;
-	}
-
-	//Voxelize the scene
-	if (VOXELIZE) {
-		voxelizeScene();
-	}
 
 	frame = 0;
 	seconds = time (NULL);
@@ -64,6 +68,17 @@ int main(int argc, char** argv){
 
 	// Launch CUDA/GL
 	if (init(argc, argv)) {
+
+		if (OCTREE){
+			createOctree();
+		}
+
+		//Voxelize the scene
+		if (VOXELIZE) {
+		  voxelizeScene();
+		}
+
+
 		// GLFW main loop
 		mainLoop();
 	}
@@ -72,10 +87,104 @@ int main(int argc, char** argv){
 	return 0;
 }
 
+void createOctree() {
+	// Create a new Octree centered at the origin
+	// with physical dimension 2x2x2
+	octree = new Octree(Vec3(0,0,0), Vec3(1,1,1));
+
+	// Create a bunch of random points
+	const int nPoints = 1 * 1000 * 1000;
+	for(int i=0; i<nPoints; ++i) {
+		//points.push_back(randVec3());
+		//put vertices into points
+	}
+	printf("Created %ld points\n", points.size()); fflush(stdout);
+
+	// Insert the points into the octree
+	octreePoints = new OctreePoint[nPoints];
+	for(int i=0; i<nPoints; ++i) {
+		octreePoints[i].setPosition(points[i]);
+		octree->insert(octreePoints + i);
+	}
+	printf("Inserted points to octree\n"); fflush(stdout);
+
+	// Create a very small query box. The smaller this box is
+	// the less work the octree will need to do. This may seem
+	// like it is exagerating the benefits, but often, we only
+	// need to know very nearby objects.
+	qmin = Vec3(-.05,-.05,-.05);
+	qmax = Vec3(.05,.05,.05);
+
+	// Remember: In the case where the query is relatively close
+	// to the size of the whole octree space, the octree will
+	// actually be a good bit slower than brute forcing every point!
+}
+
+
+/*
+
+
+
+float rand11() // Random number between [-1,1]
+{ return -1.f + (2.f*rand()) * (1.f / RAND_MAX); }
+
+Vec3 randVec3() // Random vector with components in the range [-1,1]
+{ return Vec3(rand11(), rand11(), rand11()); }
+
+// Determine if 'point' is within the bounding box [bmin, bmax]
+bool naivePointInBox(const Vec3& point, const Vec3& bmin, const Vec3& bmax) {
+	return 
+		point.x >= bmin.x &&
+		point.y >= bmin.y &&
+		point.z >= bmin.z &&
+		point.x <= bmax.x &&
+		point.y <= bmax.y &&
+		point.z <= bmax.z;
+}
+
+
+// Query using brute-force
+void testNaive() {
+	double start = stopwatch();
+
+	std::vector<int> results;
+	for(int i=0; i<points.size(); ++i) {
+		if(naivePointInBox(points[i], qmin, qmax)) {
+			results.push_back(i);
+		}
+	}
+
+	double T = stopwatch() - start;
+	printf("testNaive found %ld points in %.5f sec.\n", results.size(), T);
+}
+
+// Query using Octree
+void testOctree() {
+	double start = stopwatch();
+
+	std::vector<OctreePoint*> results;
+	octree->getPointsInsideBox(qmin, qmax, results);
+
+	double T = stopwatch() - start;
+	printf("testOctree found %ld points in %.5f sec.\n", results.size(), T);
+}
+
+
+int main(int argc, char **argv) {
+	init();
+	testNaive();
+	testOctree();
+
+	return 0;
+}
+
+*/
+
+
 
 /*void loadMultipleObj(int choice, int type){
 
-string Path = "../../../objs/";
+string Path = path_prefix + "../objs/";
 string data;
 
 if(choice==1){	
@@ -93,7 +202,6 @@ mesh->buildVBOs();
 meshes.push_back(mesh);
 delete loader;
 }
-
 
 }*/
 
@@ -146,15 +254,16 @@ void runCuda() {
 
 	glm::mat4 rotationM = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(1.0f, 0.0f, 0.0f))*glm::rotate(glm::mat4(1.0f), 20.0f-0.5f*frame, glm::vec3(0.0f, 1.0f, 0.0f))*glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 
+  float newcbo[] = { 0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0,
+    1.0, 0.0, 0.0 };
+
 	//Update data
 	if (VOXELIZE) {
 		vbo = m_vox.vbo;
 		vbosize = m_vox.vbosize;
-		float newcbo[] = { 0.0, 1.0, 0.0,
-			0.0, 0.0, 1.0,
-			1.0, 0.0, 0.0 };
-		cbo = newcbo;
-		cbosize = 9;
+    cbo = newcbo;
+    cbosize = 9;
 		ibo = m_vox.ibo;
 		ibosize = m_vox.ibosize;
 		nbo = m_vox.nbo;
@@ -162,9 +271,6 @@ void runCuda() {
 	} else {
 		vbo = mesh->getVBO();
 		vbosize = mesh->getVBOsize();
-		float newcbo[] = { 0.0, 1.0, 0.0,
-			0.0, 0.0, 1.0,
-			1.0, 0.0, 0.0 };
 		cbo = newcbo;
 		cbosize = 9;
 		ibo = mesh->getIBO();
@@ -188,12 +294,16 @@ void runCuda() {
 
 void runGL() {
 
+  float newcbo[] = { 0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0,
+    1.0, 0.0, 0.0 };
+
 	//Update data
 	if (VOXELIZE) {
 		vbo = m_vox.vbo;
 		vbosize = m_vox.vbosize;
-		cbo = m_vox.cbo;
-		cbosize = m_vox.cbosize;
+    cbo = newcbo;
+    cbosize = 9;
 		ibo = m_vox.ibo;
 		ibosize = m_vox.ibosize;
 		nbo = m_vox.nbo;
@@ -201,9 +311,6 @@ void runGL() {
 	} else {
 		vbo = mesh->getVBO();
 		vbosize = mesh->getVBOsize();
-		float newcbo[] = { 0.0, 1.0, 0.0,
-			0.0, 0.0, 1.0,
-			1.0, 0.0, 0.0 };
 		cbo = newcbo;
 		cbosize = 9;
 		ibo = mesh->getIBO();
@@ -260,7 +367,7 @@ void voxelizeScene() {
 	//Load cube
 	Mesh m_cube;
 	obj* cube = new obj();
-	string cubeFile = "../../../objs/cube.obj";
+	string cubeFile = path_prefix + "../objs/cube.obj";
 	objLoader* loader = new objLoader(cubeFile, cube);
 	cube->buildVBOs();
 	m_cube.vbo = cube->getVBO();
@@ -415,8 +522,10 @@ void initGL() {
 GLuint initDefaultShaders() {
 	const char *attribLocations[] = { "v_position", "v_normal" };
 
-	const char *vertShader = "../../../shaders/default.vert";
-	const char *fragShader = "../../../shaders/default.frag";
+  string vs = path_prefix + "../shaders/default.vert";
+  string fs = path_prefix + "../shaders/default.frag";
+	const char *vertShader = vs.c_str();
+  const char *fragShader = fs.c_str();
 
 	GLuint program = glslUtility::createProgram(attribLocations, 2, vertShader, fragShader);
 

@@ -267,7 +267,7 @@ uint32 Compact_ranges::run(int32* dest_begin, int32* dest_end, int32* dest_id, c
     const size_t max_blocks = thrust::detail::device::cuda::arch::max_active_blocks(compact::compact_ranges_count, CTA_SIZE, 0);
     const uint32 group_size = CTA_SIZE;
     const uint32 n_groups   = (n_elements + group_size-1) / group_size;
-    const size_t n_blocks   = std::min( max_blocks, n_groups );
+    const size_t n_blocks   = std::min( (int)max_blocks, (int)n_groups );
 
     const uint32 n_groups_per_block   = (n_groups + n_blocks-1) / n_blocks;                     // constant across CTA
     const uint32 n_elements_per_block = n_groups_per_block * group_size;                        // constant across CTA
