@@ -17,6 +17,8 @@
 #include <stdlib.h>
 #include <string>
 #include <time.h>
+#include "Octree.h"
+#include "Vec3.h"
 #include "glm\gtc\matrix_transform.hpp"
 
 #define MOUSE_SPEED 2.0*0.0001f
@@ -25,6 +27,7 @@
 
 #define USE_CUDA_RASTERIZER 0
 #define VOXELIZE 1
+#define OCTREE 1
 
 #include "rasterizeKernels.h"
 #include "utilities.h"

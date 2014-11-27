@@ -86,6 +86,9 @@
     <ClInclude Include="..\..\..\src\sceneStructs.h" />
     <ClInclude Include="..\..\..\src\utilities.h" />
     <ClInclude Include="..\..\..\src\voxelization.h" />
+    <ClInclude Include="Octree.h" />
+    <ClInclude Include="OctreePoint.h" />
+    <ClInclude Include="Vec3.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\external\src\glslUtil\glslUtility.cpp" />
