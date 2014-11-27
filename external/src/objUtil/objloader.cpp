@@ -77,7 +77,9 @@ objLoader::objLoader(string filename, obj* newMesh){
 
 					}
 					geomesh->addFace(pointList);
-					geomesh->addFaceNormal(normalList);
+          if (normalList.size() > 0) {
+					  geomesh->addFaceNormal(normalList);
+          }
 				}else if(std::string::npos != line.find("/")){
 					vector<int> pointList;
 					vector<int> normalList;
@@ -98,7 +100,9 @@ objLoader::objLoader(string filename, obj* newMesh){
 						}
 					}
 					geomesh->addFace(pointList);
-					geomesh->addFaceNormal(normalList);
+          if (normalList.size() > 0) {
+            geomesh->addFaceNormal(normalList);
+          }
 					geomesh->addFaceTexture(texturecoordList);
 				}else{
 					string v;
