@@ -62,7 +62,11 @@ typedef unsigned long long	uint64;
 typedef long long			int64;
 
 //#define NIH_FORCE_INLINE __forceinline
+#if defined(__GNUC__)
+#define FORCE_INLINE __attribute__((always_inline))
+#else
 #define FORCE_INLINE __forceinline
+#endif
 
 template <typename Out, typename In>
 union BinaryCast

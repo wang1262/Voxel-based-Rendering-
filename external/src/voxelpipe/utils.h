@@ -254,7 +254,7 @@ __device__ void plane_setup(
 }
 
 // intra-warp inclusive scan
-template <typename T> inline __device__ __forceinline__ T scan_warp(T val, const int32 tidx, volatile T *red)
+template <typename T> __device__ __forceinline__ T scan_warp(T val, const int32 tidx, volatile T *red)
 {
     // pad initial segment with zeros
     red[tidx] = 0;
@@ -270,15 +270,15 @@ template <typename T> inline __device__ __forceinline__ T scan_warp(T val, const
 	return val;
 }
 // return the total from a scan_warp
-template <typename T> inline __device__ __forceinline__ T scan_warp_total(volatile T *red) { return red[63]; }
+template <typename T> __device__ __forceinline__ T scan_warp_total(volatile T *red) { return red[63]; }
 
 // generic chunked scan
 template <int32 CHUNK_SIZE>
-inline __device__ __forceinline__ uint32 scan(const uint32 val, const int tidx, volatile unsigned int* red) { return 0; }
+__device__ __forceinline__ uint32 scan(const uint32 val, const int tidx, volatile unsigned int* red) { return 0; }
 
 /// quarter-warp inclusive scan
 template <>
-inline __device__ __forceinline__ uint32 scan<8>(uint32 val, const int tidx, volatile unsigned int* red)
+__device__ __forceinline__ uint32 scan<8>(uint32 val, const int tidx, volatile unsigned int* red)
 {
     red[tidx] = 0;
     red += 8;
@@ -292,7 +292,7 @@ inline __device__ __forceinline__ uint32 scan<8>(uint32 val, const int tidx, vol
 }
 /// half-warp inclusive scan
 template <>
-inline __device__ __forceinline__ uint32 scan<16>(uint32 val, const int tidx, volatile unsigned int* red)
+__device__ __forceinline__ uint32 scan<16>(uint32 val, const int tidx, volatile unsigned int* red)
 {
     red[tidx] = 0;
     red += 16;
@@ -307,7 +307,7 @@ inline __device__ __forceinline__ uint32 scan<16>(uint32 val, const int tidx, vo
 }
 /// warp inclusive scan
 template <>
-inline __device__ __forceinline__ uint32 scan<32>(uint32 val, const int tidx, volatile unsigned int* red)
+__device__ __forceinline__ uint32 scan<32>(uint32 val, const int tidx, volatile unsigned int* red)
 {
     red[tidx] = 0;
     red += 32;

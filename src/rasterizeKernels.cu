@@ -9,7 +9,7 @@
 #include <thrust/copy.h>
 #include "rasterizeKernels.h"
 #include "rasterizeTools.h"
-#include "glm\gtc\matrix_transform.hpp"
+#include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 using namespace std;
 
