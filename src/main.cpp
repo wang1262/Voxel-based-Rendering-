@@ -2,15 +2,16 @@
 #include "main.h"
 
 string path_prefix = "../../";
-#if defined(__GNUC__) 
-path_prefix = "";
-#endif
 
 //-------------------------------
 //-------------MAIN--------------
 //-------------------------------
 
 int main(int argc, char** argv){
+
+#if defined(__GNUC__)
+  path_prefix = "";
+#endif
 
 	bool loadedScene = false;
 	/*for(int i=1; i<argc; i++){
