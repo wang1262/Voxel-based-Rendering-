@@ -127,6 +127,7 @@ void runGL();
 bool init(int argc, char* argv[]);
 
 void voxelizeScene();
+void createOctree();
 
 //CUDA Rasterizer Setup
 void initCudaPBO();
