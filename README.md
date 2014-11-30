@@ -40,4 +40,11 @@ OpenGL Stanford Dragon:
 
 Building Voxel Octree
 ---------------------
-Reference: [Simple Octree](https://github.com/brandonpelfrey/SimpleOctree)
+Two points of octree implementation:
+ - Only pixels to be actually displayed need to be computed, with the actual screen resolution limiting the level of voxel detail required (limits the computational cost during rendering)
+ 
+ - Interior voxels, fully enclosed voxels, are unnecessary to be included in the 3D data set (limits the amount of 3D voxel data, which is the storage space)
+
+
+Reference: [Sparse voxel Octree](http://en.wikipedia.org/wiki/Sparse_voxel_octree), 
+           [Simple Octree](https://github.com/brandonpelfrey/SimpleOctree)
