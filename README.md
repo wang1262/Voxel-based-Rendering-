@@ -25,11 +25,18 @@ Approach
 OpenGL Stanford Dragon:
 ![Voxel Dragon GL] (images/stanford_dragon_voxelized_gl.png)
 
-CUDA Stanford Dragon:
-![Voxel Dragon CUDA] (images/stanford_dragon_voxelized_cuda.png)
+[OpenGL Pipeline] (https://www.youtube.com/watch?v=ynhujtzyh6s&list=UUpiGNsmZZFAvKHIT0y5Q32Q)
 
-![Voxel Bunny] (images/bunny_voxelized_gl.png)
+[CUDA Pipeline] (https://www.youtube.com/watch?v=cD8gOQchpoM&feature=youtu.be)
 
+##Phase II Progress:
+
+- Port to Linux
+- Texture Mapping (in progress)
+- Increased efficiency for 1024^3 voxels
+- GPU SVO (in progress)
+
+[1024^3 Voxels Stanford Dragon](https://www.youtube.com/watch?v=wFguF1bXP6g&feature=youtu.be)
 
 Building Voxel Octree
 ---------------------

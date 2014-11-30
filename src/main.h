@@ -27,7 +27,7 @@
 
 #define USE_CUDA_RASTERIZER 0
 #define VOXELIZE 1
-#define OCTREE 1
+#define OCTREE 0
 
 #include "rasterizeKernels.h"
 #include "utilities.h"
