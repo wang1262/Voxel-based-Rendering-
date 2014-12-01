@@ -79,8 +79,9 @@ struct check_voxel {
   }
 };
 
-__global__ void createCubeMesh(int* voxels, int M, int T, float3 bbox0, float3 t_d, float3 p_d, float scale_factor, int num_voxels, float* cube_vbo, 
-                                int cube_vbosize, int* cube_ibo, int cube_ibosize, float* cube_nbo, float* out_vbo, int* out_ibo, float* out_nbo) {
+template <typename storage_type>
+__global__ void createCubeMesh(int* voxels, void* fb, int M, int T, float3 bbox0, float3 t_d, float3 p_d, float scale_factor, int num_voxels, float* cube_vbo, 
+                                int cube_vbosize, int* cube_ibo, int cube_ibosize, float* cube_nbo, float* out_vbo, int* out_ibo, float* out_nbo, float* out_cbo) {
 
   //Get the index for the thread
   int idx = blockIdx.x*blockDim.x + threadIdx.x;
@@ -90,6 +91,7 @@ __global__ void createCubeMesh(int* voxels, int M, int T, float3 bbox0, float3 t
     int vbo_offset = idx * cube_vbosize;
     int ibo_offset = idx * cube_ibosize;
     float3 center = getCenterFromIndex(voxels[idx], M, T, bbox0, t_d, p_d);
+    float3 color = getColorFromIndex<storge_type>(voxels[idx], fb, M, T);
 
     for (int i = 0; i < cube_vbosize; i++) {
       if (i % 3 == 0) {
@@ -198,9 +200,11 @@ __host__ void extractCubesFromVoxelGrid(int* d_voxels, int numVoxels, Mesh &m_cu
   float* d_vbo_out;
   int* d_ibo_out;
   float* d_nbo_out;
+  float* d_cbo_out;
   cudaMalloc((void**)&d_vbo_out, numVoxels * m_cube.vbosize * sizeof(float));
   cudaMalloc((void**)&d_ibo_out, numVoxels * m_cube.ibosize * sizeof(int));
   cudaMalloc((void**)&d_nbo_out, numVoxels * m_cube.nbosize * sizeof(float));
+  cudaMalloc((void**)&d_cbo_out, numVoxels * m_cube.nbosize * sizeof(float));
 
   //Warn if vbo and nbo are not same size on cube
   if (m_cube.vbosize != m_cube.nbosize) {
@@ -209,18 +213,20 @@ __host__ void extractCubesFromVoxelGrid(int* d_voxels, int numVoxels, Mesh &m_cu
   }
 
   //Create resulting cube-ized mesh
-  createCubeMesh << <(numVoxels / 256) + 1, 256 >> >(d_voxels, M, T, bbox0, t_d, p_d, vox_size / CUBE_MESH_SCALE, numVoxels, thrust::raw_pointer_cast(&d_vbo_cube.front()),
-    m_cube.vbosize, thrust::raw_pointer_cast(&d_ibo_cube.front()), m_cube.ibosize, thrust::raw_pointer_cast(&d_nbo_cube.front()), d_vbo_out, d_ibo_out, d_nbo_out);
+  createCubeMesh << <(numVoxels / 256) + 1, 256 >> >(d_voxels, thrust::raw_pointer_cast(&d_fb.front()), M, T, bbox0, t_d, p_d, vox_size / CUBE_MESH_SCALE, numVoxels, thrust::raw_pointer_cast(&d_vbo_cube.front()),
+    m_cube.vbosize, thrust::raw_pointer_cast(&d_ibo_cube.front()), m_cube.ibosize, thrust::raw_pointer_cast(&d_nbo_cube.front()), d_vbo_out, d_ibo_out, d_nbo_out, d_cbo_out);
 
   //Store output sizes
   m_out.vbosize = numVoxels * m_cube.vbosize;
   m_out.ibosize = numVoxels * m_cube.ibosize;
   m_out.nbosize = numVoxels * m_cube.nbosize;
+  m_out.cbosize = m_out.nbosize;
 
   //Memory allocation for the outputs
   m_out.vbo = (float*)malloc(m_out.vbosize * sizeof(float));
   m_out.ibo = (int*)malloc(m_out.ibosize * sizeof(int));
   m_out.nbo = (float*)malloc(m_out.nbosize * sizeof(float));
+  m_out.cbo = (float*)malloc(m_out.cbosize * sizeof(float));
 
   //Sync here after doing some CPU work
   cudaDeviceSynchronize();
@@ -235,6 +241,7 @@ __host__ void extractCubesFromVoxelGrid(int* d_voxels, int numVoxels, Mesh &m_cu
   cudaFree(d_vbo_out);
   cudaFree(d_ibo_out);
   cudaFree(d_nbo_out);
+  cudaFree(d_cbo_out);
 
 }
 
@@ -250,9 +257,11 @@ __host__ void voxelizeToCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
   extractCubesFromVoxelGrid(d_voxels, numVoxels, m_cube, m_out);
 
   //Copy CBO from input directly
+  /*
   m_out.cbo = (float*)malloc(m_in.cbosize * sizeof(float));
   memcpy(m_out.cbo, m_in.cbo, m_in.cbosize * sizeof(float));
   m_out.cbosize = m_in.cbosize;
+  */
 
   cudaFree(d_voxels);
 }

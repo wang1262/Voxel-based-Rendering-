@@ -47,6 +47,12 @@ __device__ inline float3 getCenterFromIndex(int idx, int M, int T, float3 bbox0,
   return cent;
 }
 
+template<typename storage_type>
+__device__ inline float3 getColorFromIndex(int idx, void* fb, int M, int T) {
+
+
+}
+
 __host__ int voxelizeMesh(Mesh &m_in, int* d_voxels);
 
 __host__ void extractCubesFromVoxelGrid(int* d_voxels, int numVoxels, Mesh &m_cube, Mesh &m_out);

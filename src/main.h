@@ -75,8 +75,8 @@ GLuint proj_location;
 GLuint norm_location;
 GLuint light_location;
 
-// VBO's for the GL pipeline
-GLuint buffers[2];
+// VAO's for the GL pipeline
+GLuint buffers[3];
 
 //-------------------------------
 //----------GLOBAL STUFF-----------
