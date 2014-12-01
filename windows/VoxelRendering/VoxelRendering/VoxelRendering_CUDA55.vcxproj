@@ -82,9 +82,6 @@
     <ClInclude Include="..\..\..\src\sceneStructs.h" />
     <ClInclude Include="..\..\..\src\utilities.h" />
     <ClInclude Include="..\..\..\src\voxelization.h" />
-    <ClInclude Include="Octree.h" />
-    <ClInclude Include="OctreePoint.h" />
-    <ClInclude Include="Vec3.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\external\src\glslUtil\glslUtility.cpp" />
@@ -97,10 +94,8 @@
   <ItemGroup>
     <CudaCompile Include="..\..\..\external\src\voxelpipe\compact_ranges.cu" />
     <CudaCompile Include="..\..\..\external\src\voxelpipe\utils.cu" />
-    <CudaCompile Include="..\..\..\src\rasterizeKernels.cu">
-      <FileType>Document</FileType>
-    </CudaCompile>
-    <CudaCompile Include="voxelization.cu" />
+    <CudaCompile Include="..\..\..\src\rasterizeKernels.cu"/>
+    <CudeCompile Include="..\..\..\src\svo.cu" />
     <CudeCompile Include="..\..\..\src\voxelization.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

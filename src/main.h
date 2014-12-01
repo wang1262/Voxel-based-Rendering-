@@ -18,8 +18,6 @@
 #include <string>
 #include <time.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include "Octree.h"
-#include "Vec3.h"
 
 #define MOUSE_SPEED 2.0*0.0001f
 #define ZOOM_SPEED 8
@@ -33,6 +31,7 @@
 #include "utilities.h"
 #include "sceneStructs.h"
 #include "voxelization.h"
+#include "svo.h"
 
 using namespace std;
 
@@ -127,7 +126,6 @@ void runGL();
 bool init(int argc, char* argv[]);
 
 void voxelizeScene();
-void createOctree();
 
 //CUDA Rasterizer Setup
 void initCudaPBO();
