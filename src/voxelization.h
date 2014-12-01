@@ -4,9 +4,12 @@
 #include <cuda.h>
 #include "sceneStructs.h"
 
+//This flag can switch back into a mode where voxelization does not apply color or normals to the voxels. Occupancy only.
+#define BIT_MODE 0
+
 //Declare voxelization resolution (TODO: input these as a parameter)
 const int log_N = 8;
-const int log_T = 4;
+const int log_T = 3; ///Can only be > 3 when in BIT_MODE
 const int N = 1 << log_N; //N is the total number of voxels (per dimension)
 const int M = 1 << (log_N - log_T); //M is the total number of tiles (per dimension)
 const int T = 1 << log_T; //T is the tile size - voxels per tile (per dimension)

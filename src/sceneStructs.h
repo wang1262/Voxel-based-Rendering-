@@ -7,10 +7,12 @@ struct Mesh {
   int nbosize;
   int cbosize;
   int ibosize;
+  int tbosize;
   float* vbo;
   float* nbo;
   float* cbo;
   int* ibo;
+  float* tbo;
 };
 
 

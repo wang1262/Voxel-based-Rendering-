@@ -12,6 +12,31 @@
 voxelpipe::FRContext<log_N, log_T>*  context;
 bool first_time = true;
 
+struct ColorShader
+{
+  int* texture;
+  int tex_width;
+  int tex_height;
+  float* texcoord;
+  int texcoord_size;
+
+  __device__ float shade(
+    const int tri_id,
+    const float4 v0,
+    const float4 v1,
+    const float4 v2,
+    const float3 n,
+    const float  bary0,
+    const float  bary1,
+    const int3   xyz) const
+  {
+    //Return G = 255, A = 255 for now
+    return (float) ((255 << 7) + (255 << 23));
+
+    //TODO: Pull the color from the texture using the barycentric/texcoords
+  }
+};
+
 template<typename storage_type>
 __global__ void getOccupiedVoxels(void* fb, int M, int T, int* voxels) {
   int T3 = T*T*T;
@@ -25,12 +50,16 @@ __global__ void getOccupiedVoxels(void* fb, int M, int T, int* voxels) {
     storage_type* tile;
 
     bool is_occupied;
-    if (T <= 8) {
+    if (T <= 8 && BIT_MODE) {
       tile = (storage_type*)fb + tile_num*T3;
       is_occupied = tile[pix_num];
-    } else {
+    } else if (BIT_MODE) {
       tile = (storage_type*)fb + tile_num*(T3 >> 5);
       is_occupied = (tile[pix_num >> 5] & (1 << (pix_num & 31)));
+    } else {
+      tile = (storage_type*)fb + tile_num*T3;
+      int alpha = ((int)tile[pix_num]) >> 23;
+      is_occupied = alpha > 0;
     }
 
     if (is_occupied) {
@@ -123,10 +152,23 @@ __host__ int voxelizeMesh(Mesh &m_in, int* d_voxels) {
   //Initialize the result data on the device
   thrust::device_vector<storage_type>  d_fb(M*M*M * tile_op_type::STORAGE_SIZE);
 
+  //Create the shader to be used that will write texture colors to voxels
+  ColorShader my_shader;
+  my_shader.texture = NULL;
+  my_shader.tex_height = 0;
+  my_shader.tex_width = 0;
+  my_shader.texcoord = m_in.tbo;
+  my_shader.texcoord_size = m_in.tbosize;
+
   //Perform coarse and fine voxelization
   context->coarse_raster(n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1);
-  context->fine_raster< voxelpipe::Bit, voxelpipe::BIT_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::ADD_BLENDING, voxelpipe::DefaultShader<voxelpipe::Bit> >(
-    n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1, thrust::raw_pointer_cast(&d_fb.front()));
+  if (BIT_MODE) {
+    context->fine_raster< voxelpipe::Bit, voxelpipe::BIT_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::ADD_BLENDING, voxelpipe::DefaultShader<voxelpipe::Bit> >(
+      n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1, thrust::raw_pointer_cast(&d_fb.front()));
+  } else {
+    context->fine_raster< voxelpipe::Float, voxelpipe::FP32S_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::ADD_BLENDING, ColorShader >(
+      n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1, thrust::raw_pointer_cast(&d_fb.front()), my_shader);
+  }
 
   //TODO: Consider replacing this next part with scan/compact/decode rather than decode/compact
 

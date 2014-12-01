@@ -259,6 +259,8 @@ void voxelizeScene() {
 	m_in.cbosize = mesh->getCBOsize();
 	m_in.ibo = mesh->getIBO();
 	m_in.ibosize = mesh->getIBOsize();
+  m_in.tbo = mesh->getTBO();
+  m_in.tbosize = mesh->getTBOsize();
 
 	//Load cube
 	Mesh m_cube;

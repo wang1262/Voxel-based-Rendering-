@@ -322,6 +322,10 @@ int* obj::getIBO(){
 	return ibo;
 }
 
+float* obj::getTBO(){
+  return tbo;
+}
+
 int obj::getVBOsize(){
 	return vbosize;
 }
@@ -336,5 +340,9 @@ int obj::getIBOsize(){
 
 int obj::getCBOsize(){
 	return cbosize;
+}
+
+int obj::getTBOsize(){
+  return tbosize;
 }
 
