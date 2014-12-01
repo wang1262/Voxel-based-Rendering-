@@ -2,6 +2,9 @@
 #include "svo.h"
 #include "voxelization.h"
 
+#include <thrust/device_ptr.h>
+#include <thrust/device_vector.h>
+
 __global__ void flagNodes(int* voxels, int numVoxels, int* octree, int M, int T, float3 bbox0, float3 t_d, float3 p_d, int tree_depth) {
 
   int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -62,6 +65,80 @@ __global__ void splitNodes(int* octree, int* numNodes, int poolSize) {
 
 }
 
+__global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, float3 bbox0, float scale_factor, int num_voxels, float* cube_vbo,
+  int cube_vbosize, int* cube_ibo, int cube_ibosize, float* cube_nbo, float* out_vbo, int* out_ibo, float* out_nbo) {
+
+  //Get the index for the thread
+  int idx = blockIdx.x*blockDim.x + threadIdx.x;
+
+  float edge_length = abs(bbox0.x);
+  float3 center = make_float3(0.0f, 0.0f, 0.0f);
+  int pointer = 0;
+  bool is_occupied = true;
+
+  for (int i = 0; i < depth; i++) {
+    //Get the lowest 3 bits to encode the first move
+    int pos = idx & 0x7;
+
+    //Get the value from the octree
+    int val = octree[2*(pointer+pos)];
+
+    //It it is not occupied, do not continue
+    is_occupied = val & 0x40000000;
+
+    //Don't continue is its not occupied
+    if (!is_occupied) {
+      break;
+    }
+
+    //Get the child pointer for the next depth
+    pointer = val & 0x3FFFFFFF;
+
+    //Decode the value into xyz
+    int x = val & 0x1;
+    int y = val & 0x2;
+    int z = val & 0x4;
+
+    //Update the center
+    center.x += edge_length / 2 * (x ? 1 : -1);
+    center.y += edge_length / 2 * (y ? 1 : -1);
+    center.z += edge_length / 2 * (z ? 1 : -1);
+
+    //Half the edge length for the next iteration
+    edge_length /= 2.0f;
+
+    //Shift right for the next iteration
+    idx = idx >> 3;
+  }
+
+  int vidx = atomicAdd(counter, 1);
+
+  if (vidx < num_voxels) {
+
+    int vbo_offset = vidx * cube_vbosize;
+    int ibo_offset = vidx * cube_ibosize;
+
+    for (int i = 0; i < cube_vbosize; i++) {
+      if (i % 3 == 0) {
+        out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.x;
+      }
+      else if (i % 3 == 1) {
+        out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.y;
+      }
+      else {
+        out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.z;
+      }
+      out_nbo[vbo_offset + i] = cube_nbo[i];
+    }
+
+    for (int i = 0; i < cube_ibosize; i++) {
+      out_ibo[ibo_offset + i] = cube_ibo[i] + ibo_offset;
+    }
+
+  }
+
+}
+
 //This is based on Cyril Crassin's approach
 __host__ void svoFromVoxels(int* d_voxels, int numVoxels, int* d_octree) {
   int numNodes = 8;
@@ -89,8 +166,61 @@ __host__ void svoFromVoxels(int* d_voxels, int numVoxels, int* d_octree) {
   cudaFree(d_numNodes);
 }
 
-__host__ void extractCubesFromSVO(int* d_octree, Mesh &m_cube, Mesh &m_out) {
+__host__ void extractCubesFromSVO(int* d_octree, int numVoxels, Mesh &m_cube, Mesh &m_out) {
 
+  //Move cube data to GPU
+  thrust::device_vector<float> d_vbo_cube(m_cube.vbo, m_cube.vbo + m_cube.vbosize);
+  thrust::device_vector<int> d_ibo_cube(m_cube.ibo, m_cube.ibo + m_cube.ibosize);
+  thrust::device_vector<float> d_nbo_cube(m_cube.nbo, m_cube.nbo + m_cube.nbosize);
+
+  //Create output structs
+  float* d_vbo_out;
+  int* d_ibo_out;
+  float* d_nbo_out;
+  cudaMalloc((void**)&d_vbo_out, numVoxels * m_cube.vbosize * sizeof(float));
+  cudaMalloc((void**)&d_ibo_out, numVoxels * m_cube.ibosize * sizeof(int));
+  cudaMalloc((void**)&d_nbo_out, numVoxels * m_cube.nbosize * sizeof(float));
+
+  //Warn if vbo and nbo are not same size on cube
+  if (m_cube.vbosize != m_cube.nbosize) {
+    std::cout << "ERROR: cube vbo and nbo have different sizes." << std::endl;
+    return;
+  }
+
+  //Create global counter to determine where to write the output
+  int* d_counter;
+  int initial_count = 0;
+  cudaMalloc((void**)&d_counter, sizeof(int));
+  cudaMemcpy(d_counter, &initial_count, sizeof(int), cudaMemcpyHostToDevice);
+
+  //Create resulting cube-ized mesh
+  createCubeMeshFromSVO << <(N*N*N / 256) + 1, 256 >> >(d_octree, d_counter, log_N, bbox0, vox_size / CUBE_MESH_SCALE, numVoxels, thrust::raw_pointer_cast(&d_vbo_cube.front()),
+    m_cube.vbosize, thrust::raw_pointer_cast(&d_ibo_cube.front()), m_cube.ibosize, thrust::raw_pointer_cast(&d_nbo_cube.front()), d_vbo_out, d_ibo_out, d_nbo_out);
+
+  //Store output sizes
+  m_out.vbosize = numVoxels * m_cube.vbosize;
+  m_out.ibosize = numVoxels * m_cube.ibosize;
+  m_out.nbosize = numVoxels * m_cube.nbosize;
+
+  //Memory allocation for the outputs
+  m_out.vbo = (float*)malloc(m_out.vbosize * sizeof(float));
+  m_out.ibo = (int*)malloc(m_out.ibosize * sizeof(int));
+  m_out.nbo = (float*)malloc(m_out.nbosize * sizeof(float));
+
+  //Sync here after doing some CPU work
+  cudaDeviceSynchronize();
+
+  //Copy data back from GPU
+  //TODO: Can we avoid this step by making everything run from device-side VBO/IBO/NBO/CBO?
+  cudaMemcpy(m_out.vbo, d_vbo_out, m_out.vbosize*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(m_out.ibo, d_ibo_out, m_out.ibosize*sizeof(int), cudaMemcpyDeviceToHost);
+  cudaMemcpy(m_out.nbo, d_nbo_out, m_out.nbosize*sizeof(float), cudaMemcpyDeviceToHost);
+
+  ///Free GPU memory
+  cudaFree(d_vbo_out);
+  cudaFree(d_ibo_out);
+  cudaFree(d_nbo_out);
+  cudaFree(d_counter);
 }
 
 __host__ void voxelizeSVOCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
@@ -107,17 +237,12 @@ __host__ void voxelizeSVOCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
   svoFromVoxels(d_voxels, numVoxels, d_octree);
 
   //Extract cubes from the leaves of the octree
-  //extractCubesFromSVO(d_octree, m_cube, m_out);
-
-  /////TEMPORARY---------------
-  //Extract Cubes from the Voxel Grid
-  extractCubesFromVoxelGrid(d_voxels, numVoxels, m_cube, m_out);
+  extractCubesFromSVO(d_octree, numVoxels, m_cube, m_out);
 
   //Copy CBO from input directly
   m_out.cbo = (float*)malloc(m_in.cbosize * sizeof(float));
   memcpy(m_out.cbo, m_in.cbo, m_in.cbosize * sizeof(float));
   m_out.cbosize = m_in.cbosize;
-  ////////----------------
 
   //Free up GPU memory
   cudaFree(d_voxels);
