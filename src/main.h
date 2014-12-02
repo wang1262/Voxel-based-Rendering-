@@ -68,6 +68,7 @@ int* ibo;
 int ibosize;
 float* nbo;
 int nbosize;
+vector<glm::vec4>* texcoord;
 
 // Uniform locations for the GL shaders
 GLuint mvp_location;
