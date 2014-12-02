@@ -287,7 +287,7 @@ void voxelizeScene() {
 }
 
 //read .bmp texture and assign it to tex
-void readBMP(char* filename, bmp_texture &tex)
+void readBMP(const char* filename, bmp_texture &tex)
 {
 	int i;
     FILE* f = fopen(filename, "rb");
@@ -322,7 +322,7 @@ bool init(int argc, char* argv[]) {
 		return false;
 	}
 
-	readBMP("../../../texture2.bmp", tex);
+	readBMP((path_prefix + string("../textures/texture2.bmp")).c_str(), tex);
 	width = 800;
 	height = 800;
 	window = glfwCreateWindow(width, height, "Voxel Rendering", NULL, NULL);
