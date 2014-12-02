@@ -25,6 +25,8 @@ int* device_ibo;
 float* device_nbo;
 triangle* primitives;
 triangle* primitives2;
+glm::vec3 lightDir;
+bmp_texture* device_tex;
 
 void checkCUDAError(const char *msg) {
 	cudaError_t err = cudaGetLastError();
@@ -399,28 +401,27 @@ __global__ void verticesRasterizeKernel(triangle* primitives, int primitivesCoun
 	}
 }
 
-//need to be improved..
-__global__ void fragmentShadeKernel(fragment* depthbuffer, glm::vec2 resolution, glm::vec3 lightpos, glm::vec3 eyepos, glm::mat4 projection, glm::mat4 view){
+__global__ void fragmentShadeKernel(fragment* depthbuffer, glm::vec2 resolution, glm::vec3 *lightDir, bmp_texture *tex,glm::vec3 *device_data){
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-	int index = x + (y * resolution.x);
-	if(x<=resolution.x && y<=resolution.y){
-		glm::vec4 lig = glm::vec4(0.0f, 8.0f, -8.0f, 1.0f);
+  int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+  int index = x + (y * resolution.x);
+  if(x<=resolution.x && y<=resolution.y){
+	 if (depthbuffer[index].position.z > -10000.0f) {
+	  float diffuse = glm::dot(-*lightDir,depthbuffer[index].normal);
+	  diffuse = diffuse>0?diffuse:0;
+	  int x = depthbuffer[index].texcoord.x * tex->width;
+	  int y = depthbuffer[index].texcoord.y * tex->height;
+	  glm::vec3 tex_color0 = device_data[y * tex->height + x];
+	  glm::vec3 tex_color1 = device_data[y * tex->height + x+1];
+	  glm::vec3 tex_color2 = device_data[(y+1) * tex->height + x];
+	  glm::vec3 tex_color3 = device_data[(y+1) * tex->height + x+1];
 
-		float diffusefactor = glm::dot(glm::normalize(depthbuffer[index].normal),glm::normalize(glm::vec3(lig.x, lig.y, lig.z) - depthbuffer[index].position));
-		diffusefactor = glm::max(diffusefactor, 0.0f);
-
-		glm::vec3 lightv = glm::normalize(depthbuffer[index].position - glm::vec3(lig.x, lig.y, lig.z));
-		float sc = 0;
-		glm::vec3 reflect = lightv - (2.0f * glm::normalize(depthbuffer[index].normal) * (glm::dot(glm::normalize(depthbuffer[index].normal),lightv))); 
-		float dt = glm::dot(glm::normalize(eyepos),glm::normalize(reflect));
-		dt = glm::max(dt, 0.0f);
-		float specularfactor = pow(dt,30);
-		if(depthbuffer[index].depth >0){
-			depthbuffer[index].color = glm::vec3(1.0f, 0.54f, 0.0f) * (diffusefactor * 0.6f + specularfactor * 0.4f); 
-		}
-
-	}
+	  float xx = depthbuffer[index].texcoord.x * tex->width - x;
+	  float yy = depthbuffer[index].texcoord.y * tex->height - y;
+	  glm::vec3 tex_color = (tex_color0 * (1-xx) + tex_color1 * xx) * (1-yy) + (tex_color2 * (1-xx) + tex_color3 * xx) * yy;
+	  depthbuffer[index].color = tex_color*diffuse*0.9f+tex_color*0.1f;
+	 }
+  }
 }
 
 //Handy function for reflection
@@ -484,7 +485,7 @@ __global__ void render(glm::vec2 resolution, fragment* depthbuffer, glm::vec3* f
 }
 
 // Wrapper for the __global__ call that sets up the kernel calls and does a ton of memory management
-void cudaRasterizeCore(uchar4* PBOpos, glm::vec2 resolution, glm::mat4 rotationM, float frame, float* vbo, int vbosize, float* cbo, int cbosize, int* ibo, int ibosize, float* nbo, int nbosize, glm::vec3 eye, glm::vec3 center, glm::mat4 view, glm::vec3 lightpos, int mode, bool barycenter){
+void cudaRasterizeCore(uchar4* PBOpos, glm::vec2 resolution, glm::mat4 rotationM, float frame, float* vbo, int vbosize, float* cbo, int cbosize, int* ibo, int ibosize, float* nbo, int nbosize, bmp_texture *tex, vector<glm::vec4> *texcoord, glm::vec3 eye, glm::vec3 center, glm::mat4 view, glm::vec3 lightpos, int mode, bool barycenter){
 
 	// set up crucial magic
 	int tileSize = 8;
@@ -531,6 +532,19 @@ void cudaRasterizeCore(uchar4* PBOpos, glm::vec2 resolution, glm::mat4 rotationM
 	device_nbo = NULL;
 	cudaMalloc((void**)&device_nbo, nbosize*sizeof(float));
 	cudaMemcpy( device_nbo, nbo, nbosize*sizeof(float), cudaMemcpyHostToDevice);
+
+	lightDir = glm::vec3(0,0,-1);
+    lightDir = glm::normalize(lightDir);
+    glm::vec3 *device_lightDir = NULL;
+    cudaMalloc((void**)&device_lightDir, cbosize*sizeof(glm::vec3));
+    cudaMemcpy( device_lightDir, &lightDir, cbosize*sizeof(glm::vec3), cudaMemcpyHostToDevice);
+
+	device_tex = NULL;
+    cudaMalloc((void**)&device_tex, sizeof(bmp_texture));
+    cudaMemcpy( device_tex, tex, sizeof(bmp_texture), cudaMemcpyHostToDevice);
+    glm::vec3 *device_data = NULL;
+    cudaMalloc((void**)&device_data, tex->width * tex->height *sizeof(glm::vec3));
+    cudaMemcpy( device_data, tex->data, tex->width * tex->height *sizeof(glm::vec3), cudaMemcpyHostToDevice);
 
 	tileSize = 32;
 	int primitiveBlocks = ceil(((float)vbosize/3)/((float)tileSize));
@@ -584,8 +598,8 @@ void cudaRasterizeCore(uchar4* PBOpos, glm::vec2 resolution, glm::mat4 rotationM
 	//------------------------------
 	//fragment shader
 	//------------------------------
-	//fragmentShadeKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(depthbuffer, resolution, lightpos, eye, perspectiveM, view);
-  fragmentShadePhongKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(depthbuffer, resolution, lightpos);
+	 fragmentShadeKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(depthbuffer, resolution, device_lightDir, device_tex, device_data);
+    //fragmentShadePhongKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(depthbuffer, resolution, lightpos);
 
 	cudaDeviceSynchronize();
 

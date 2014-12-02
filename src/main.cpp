@@ -2,6 +2,7 @@
 #include "main.h"
 
 string path_prefix = "../../";
+bmp_texture tex;
 
 //-------------------------------
 //-------------MAIN--------------
@@ -45,8 +46,8 @@ int main(int argc, char** argv){
 		data = local_path+ "2cows.obj";
 	else if(choice==3)
 		data = local_path+ "all_three.obj";
-  else if (choice == 4)
-    data = local_path + "cow_tex.obj";
+	else if (choice == 4)
+		data = local_path + "cow_tex.obj";
 
 	mesh = new obj();
 	objLoader* loader = new objLoader(data, mesh);
@@ -67,7 +68,6 @@ int main(int argc, char** argv){
 		if (VOXELIZE) {
 		  voxelizeScene();
 		}
-
 
 		// GLFW main loop
 		mainLoop();
@@ -176,7 +176,7 @@ void runCuda() {
 	}
 
 	cudaGLMapBufferObject((void**)&dptr, pbo);
-	cudaRasterizeCore(dptr, glm::vec2(width, height), rotationM, frame, vbo, vbosize, cbo, cbosize, ibo, ibosize, nbo, nbosize, eye, center, view, lightpos, mode, barycenter);
+	cudaRasterizeCore(dptr, glm::vec2(width, height), rotationM, frame, vbo, vbosize, cbo, cbosize, ibo, ibosize, nbo, nbosize, &tex, texcoord, eye, center, view, lightpos, mode, barycenter);
 	cudaGLUnmapBufferObject(pbo);
 
 	vbo = NULL;
@@ -293,6 +293,35 @@ void voxelizeScene() {
   }
 }
 
+//read .bmp texture and assign it to tex
+void readBMP(const char* filename, bmp_texture &tex)
+{
+	int i;
+    FILE* f = fopen(filename, "rb");
+    unsigned char info[54];
+    fread(info, sizeof(unsigned char), 54, f); // read the 54-byte header
+
+    // extract image height and width from header
+    int width = *(int*)&info[18];
+    int height = *(int*)&info[22];
+
+    int size = 3 * width * height;
+    unsigned char* data = new unsigned char[size]; // allocate 3 bytes per pixel
+    fread(data, sizeof(unsigned char), size, f); // read the rest of the data at once
+    fclose(f);
+	glm::vec3 *color_data = new glm::vec3[size/3];
+    for(i = 0; i < size; i += 3){
+			color_data[i/3].r = (int)data[i+2]/255.0f;
+			color_data[i/3].g = (int)data[i+1]/255.0f;
+			color_data[i/3].b = (int)data[i]/255.0f;
+    }
+    delete []data;
+	tex.data = color_data;
+	tex.height = height;
+	tex.width = width;
+}
+
+
 bool init(int argc, char* argv[]) {
 	glfwSetErrorCallback(errorCallback);
 
@@ -300,6 +329,7 @@ bool init(int argc, char* argv[]) {
 		return false;
 	}
 
+	readBMP((path_prefix + string("../textures/texture2.bmp")).c_str(), tex);
 	width = 800;
 	height = 800;
 	window = glfwCreateWindow(width, height, "Voxel Rendering", NULL, NULL);
