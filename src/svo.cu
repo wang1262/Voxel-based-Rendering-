@@ -59,8 +59,48 @@ __global__ void splitNodes(int* octree, int* numNodes, int poolSize) {
       //Initialize new child nodes to 0's
       for (int off = 0; off < 8; off++) {
         octree[2*(newNode + off)] = 0;
+        octree[2*(newNode + off) + 1] = 0;
       }
     }
+  }
+
+}
+
+__global__ void fillNodes(int* voxels, int numVoxels, int* octree, int M, int T, float3 bbox0, float3 t_d, float3 p_d) {
+
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+
+  //Don't do anything if its out of bounds
+  if (index < numVoxels) {
+    float3 center = getCenterFromIndex(voxels[index], M, T, bbox0, t_d, p_d);
+    float edge_length = abs(bbox0.x);
+    float3 center_depth = make_float3(0.0f, 0.0f, 0.0f);
+    int node_idx = 0;
+    int this_node;
+    bool has_child = true;
+
+    //Loop until the specified depth
+    while (has_child) {
+      int x = center.x > center_depth.x;
+      int y = center.y > center_depth.y;
+      int z = center.z > center_depth.z;
+      this_node = node_idx + (x + (y << 1) + (z << 2));
+
+      has_child = octree[2 * this_node] & 0x40000000;
+
+      if (has_child) {
+        //The lowest 30 bits are the address
+        node_idx = octree[2 * this_node] & 0x3FFFFFFF;
+
+        //Update the center depth for the next iteration
+        center_depth.x += edge_length / 2 * (x ? 1 : -1);
+        center_depth.y += edge_length / 2 * (y ? 1 : -1);
+        center_depth.z += edge_length / 2 * (z ? 1 : -1);
+      }
+      edge_length /= 2.0f;
+    }
+    //TODO: Pull this from the actual voxels
+    octree[2 * this_node + 1] = (255 << 7) + (255 << 23);
   }
 
 }
@@ -74,9 +114,9 @@ __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, floa
   float edge_length = abs(bbox0.x);
   float3 center = make_float3(0.0f, 0.0f, 0.0f);
   int pointer = 0;
-  bool is_occupied = true;
+  bool has_child = true;
 
-  for (int i = 0; i < depth; i++) {
+  while (has_child) {
     //Get the lowest 3 bits to encode the first move
     int pos = idx & 0x7;
 
@@ -84,20 +124,20 @@ __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, floa
     int val = octree[2*(pointer+pos)];
 
     //It it is not occupied, do not continue
-    is_occupied = val & 0x40000000;
+    has_child = val & 0x40000000;
 
-    //Don't continue is its not occupied
-    if (!is_occupied) {
-      break;
+    //Don't continue if it does not have a child
+    if (!has_child && (octree[2 * (pointer + pos) + 1] >> 23 == 0)) {
+      return;
     }
 
     //Get the child pointer for the next depth
     pointer = val & 0x3FFFFFFF;
 
     //Decode the value into xyz
-    int x = val & 0x1;
-    int y = val & 0x2;
-    int z = val & 0x4;
+    int x = pos & 0x1;
+    int y = pos & 0x2;
+    int z = pos & 0x4;
 
     //Update the center
     center.x += edge_length / 2 * (x ? 1 : -1);
@@ -112,6 +152,7 @@ __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, floa
   }
 
   int vidx = atomicAdd(counter, 1);
+  //TODO: Detect if we exceed the allocated memory, and break out + allocate more
 
   if (vidx < num_voxels) {
 
@@ -162,6 +203,9 @@ __host__ void svoFromVoxels(int* d_voxels, int numVoxels, int* d_octree) {
     cudaDeviceSynchronize();
     cudaMemcpy(&numNodes, d_numNodes, sizeof(int), cudaMemcpyDeviceToHost);
   }
+
+  //Now write values into the lowest level of the svo
+  fillNodes<<<(numVoxels / 256) + 1, 256>>>(d_voxels, numVoxels, d_octree, M, T, bbox0, t_d, p_d);
 
   cudaFree(d_numNodes);
 }
@@ -228,12 +272,14 @@ __host__ void voxelizeSVOCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
   //Voxelize the mesh input
   int numVoxels = N*N*N;
   int* d_voxels;
+  int init_voxels[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
   cudaMalloc((void**)&d_voxels, numVoxels*sizeof(int));
+  cudaMemcpy(d_voxels, init_voxels, 16*sizeof(int), cudaMemcpyHostToDevice);
   numVoxels = voxelizeMesh(m_in, d_voxels);
 
   //Create the octree
   int* d_octree = NULL;
-  cudaMalloc((void**)&d_octree, 2*log_N*numVoxels*sizeof(int));
+  cudaMalloc((void**)&d_octree, 32*log_N*numVoxels*sizeof(int));
   svoFromVoxels(d_voxels, numVoxels, d_octree);
 
   //Extract cubes from the leaves of the octree
