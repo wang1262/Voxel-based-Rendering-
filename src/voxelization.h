@@ -47,9 +47,9 @@ __device__ inline float3 getCenterFromIndex(int idx, int M, int T, float3 bbox0,
   return cent;
 }
 
-__host__ int voxelizeMesh(Mesh &m_in, int* d_voxels);
+__host__ int voxelizeMesh(Mesh &m_in, int* d_voxels, int* d_values);
 
-__host__ void extractCubesFromVoxelGrid(int* d_voxels, int numVoxels, Mesh &m_cube, Mesh &m_out);
+__host__ void extractCubesFromVoxelGrid(int* d_voxels, int numVoxels, int* d_values, Mesh &m_cube, Mesh &m_out);
 
 __host__ void voxelizeToCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out);
 

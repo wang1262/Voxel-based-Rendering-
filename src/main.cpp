@@ -198,8 +198,8 @@ void runGL() {
 	if (VOXELIZE) {
 		vbo = m_vox.vbo;
 		vbosize = m_vox.vbosize;
-    cbo = newcbo;
-    cbosize = 9;
+    cbo = m_vox.cbo;
+    cbosize = m_vox.cbosize;
 		ibo = m_vox.ibo;
 		ibosize = m_vox.ibosize;
 		nbo = m_vox.nbo;
@@ -238,6 +238,13 @@ void runGL() {
 	glBufferData(GL_ARRAY_BUFFER, nbosize*sizeof(float), nbo, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	glEnableVertexAttribArray(1);
+
+  if (VOXELIZE) {
+    glBindBuffer(GL_ARRAY_BUFFER, buffers[2]);
+    glBufferData(GL_ARRAY_BUFFER, cbosize*sizeof(float), cbo, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+    glEnableVertexAttribArray(2);
+  }
 
 	frame++;
 	fpstracker++;
@@ -322,7 +329,7 @@ bool init(int argc, char* argv[]) {
 		return false;
 	}
 
-	readBMP((path_prefix + string("../textures/texture2.bmp")).c_str(), tex);
+	readBMP((path_prefix + string("../textures/texture1.bmp")).c_str(), tex);
 	width = 800;
 	height = 800;
 	window = glfwCreateWindow(width, height, "Voxel Rendering", NULL, NULL);
@@ -446,7 +453,7 @@ GLuint initPassthroughShaders() {
 
 void initGL() {
 
-	glGenBuffers(2, buffers);
+	glGenBuffers(3, buffers);
 	glEnable(GL_DEPTH_TEST);
 
 }
@@ -454,8 +461,14 @@ void initGL() {
 GLuint initDefaultShaders() {
 	const char *attribLocations[] = { "v_position", "v_normal" };
 
-  string vs = path_prefix + "../shaders/default.vert";
-  string fs = path_prefix + "../shaders/default.frag";
+  string vs, fs;
+  if (VOXELIZE) {
+    vs = path_prefix + "../shaders/voxels.vert";
+    fs = path_prefix + "../shaders/voxels.frag";
+  } else {
+    vs = path_prefix + "../shaders/default.vert";
+    fs = path_prefix + "../shaders/default.frag";
+  }
 	const char *vertShader = vs.c_str();
   const char *fragShader = fs.c_str();
 
