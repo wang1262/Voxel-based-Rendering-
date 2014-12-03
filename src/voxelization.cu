@@ -14,7 +14,7 @@ bool first_time = true;
 
 struct ColorShader
 {
-  int* texture;
+  glm::vec3* texture;
   int tex_width;
   int tex_height;
   float* texcoord;
@@ -30,10 +30,45 @@ struct ColorShader
     const float  bary1,
     const int3   xyz) const
   {
-    //Return G = 255, A = 255 for now
-    return __int_as_float((255 << 7) + (255 << 23));
+    //If there is no texture, just return green
+    if (tex_width == 0) {
+      return __int_as_float((255 << 7) + (255 << 23));
+    }
 
-    //TODO: Pull the color from the texture using the barycentric/texcoords
+    //If there are no texcoordinates, just return the first value in the texture
+    if (texcoord_size == 0) {
+      int r = (int)(texture[0].r * 255.0);
+      int g = (int)(texture[0].g * 255.0);
+      int b = (int)(texture[0].b * 255.0);
+      return __int_as_float(r+(g << 7) + (b << 15) + (255 << 23));
+    }
+
+    //Get the texture coordinates from the triangle id
+    int t1_x = texcoord[6 * tri_id] * tex_width;
+    int t1_y = texcoord[6 * tri_id + 1] * tex_height;
+    int t2_x = texcoord[6 * tri_id + 2] * tex_width;
+    int t2_y = texcoord[6 * tri_id + 3] * tex_height;
+    int t3_x = texcoord[6 * tri_id + 4] * tex_width;
+    int t3_y = texcoord[6 * tri_id + 5] * tex_height;
+
+    //Get the colors from the texture at these vertices
+    glm::vec3 c1 = texture[t1_y * tex_width + t1_x];
+    glm::vec3 c2 = texture[t2_y * tex_width + t2_x];
+    glm::vec3 c3 = texture[t3_y * tex_width + t3_x];
+
+    //TODO: Interpolate using barycentric coordinates
+    glm::vec3 color = c1;
+
+    //Compute rgb components
+    int r = (int) (clamp(color.r, 0.0f, 1.0f) * 255.0f);
+    int g = (int) (clamp(color.g, 0.0f, 1.0f) * 255.0f);
+    int b = (int) (clamp(color.b, 0.0f, 1.0f) * 255.0f);
+
+    //Compact
+    int val = r + (g << 7) + (b << 15) + (255 << 23);
+
+    return __int_as_float(val);
+
   }
 };
 
@@ -124,7 +159,7 @@ __global__ void createCubeMesh(int* voxels, int* values, int M, int T, float3 bb
 
 }
 
-__host__ int voxelizeMesh(Mesh &m_in, int* d_voxels, int* d_values) {
+__host__ int voxelizeMesh(Mesh &m_in, bmp_texture* h_tex, int* d_voxels, int* d_values) {
 
   //Initialize sizes
   const int n_triangles = m_in.ibosize / 3;
@@ -166,12 +201,22 @@ __host__ int voxelizeMesh(Mesh &m_in, int* d_voxels, int* d_values) {
   //Initialize the result data on the device
   thrust::device_vector<storage_type>  d_fb(M*M*M * tile_op_type::STORAGE_SIZE);
 
+  //Copy the texture to the device
+  glm::vec3 *device_tex = NULL;
+  cudaMalloc((void**)&device_tex, h_tex->width * h_tex->height *sizeof(glm::vec3));
+  cudaMemcpy(device_tex, h_tex->data, h_tex->width * h_tex->height *sizeof(glm::vec3), cudaMemcpyHostToDevice);
+
+  //Copy the texture coordinates to the device
+  float* device_texcoord = NULL;
+  cudaMalloc((void**)&device_texcoord, m_in.tbosize * sizeof(float));
+  cudaMemcpy(device_texcoord, m_in.tbo, m_in.tbosize *sizeof(float), cudaMemcpyHostToDevice);
+
   //Create the shader to be used that will write texture colors to voxels
   ColorShader my_shader;
-  my_shader.texture = NULL;
-  my_shader.tex_height = 0;
-  my_shader.tex_width = 0;
-  my_shader.texcoord = m_in.tbo;
+  my_shader.texture = device_tex;
+  my_shader.tex_height = h_tex->height;
+  my_shader.tex_width = h_tex->width;
+  my_shader.texcoord = device_texcoord;
   my_shader.texcoord_size = m_in.tbosize;
 
   //Perform coarse and fine voxelization
@@ -183,6 +228,9 @@ __host__ int voxelizeMesh(Mesh &m_in, int* d_voxels, int* d_values) {
     context->fine_raster< voxelpipe::Float, voxelpipe::FP32S_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::MAX_BLENDING, ColorShader >(
       n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1, thrust::raw_pointer_cast(&d_fb.front()), my_shader);
   }
+
+  cudaFree(device_tex);
+  cudaFree(device_texcoord);
 
   //Get voxel centers
   int numVoxels = N*N*N;
@@ -260,7 +308,7 @@ __host__ void extractCubesFromVoxelGrid(int* d_voxels, int numVoxels, int* d_val
 
 }
 
-__host__ void voxelizeToCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
+__host__ void voxelizeToCubes(Mesh &m_in, bmp_texture* tex, Mesh &m_cube, Mesh &m_out) {
   
   //Voxelize the mesh input
   int numVoxels = N*N*N;
@@ -268,7 +316,7 @@ __host__ void voxelizeToCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
   int* d_values;
   cudaMalloc((void**)&d_voxels, numVoxels*sizeof(int));
   cudaMalloc((void**)&d_values, numVoxels*sizeof(int));
-  numVoxels = voxelizeMesh(m_in, d_voxels, d_values);
+  numVoxels = voxelizeMesh(m_in, tex, d_voxels, d_values);
 
   //Extract Cubes from the Voxel Grid
   extractCubesFromVoxelGrid(d_voxels, numVoxels, d_values, m_cube, m_out);

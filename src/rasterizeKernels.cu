@@ -429,18 +429,6 @@ __host__ __device__ glm::vec3 reflect(glm::vec3 vec_in, glm::vec3 norm) {
   return (vec_in - 2.0f*glm::dot(vec_in, norm)*norm);
 }
 
-//Handy function for clamping between two values;
-__host__ __device__ float clamp(float val, float min, float max) {
-  float result = val;
-  if (val < min) {
-    val = min;
-  }
-  else if (val > max) {
-    val = max;
-  }
-  return val;
-}
-
 //Phong shader
 __global__ void fragmentShadePhongKernel(fragment* depthbuffer, glm::vec2 resolution, glm::vec3 lightpos){
   int x = (blockIdx.x * blockDim.x) + threadIdx.x;

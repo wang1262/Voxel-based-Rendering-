@@ -54,6 +54,8 @@ GLFWwindow *window;
 obj* mesh;
 vector <obj*> meshes;
 
+bmp_texture tex;
+
 //Voxelized mesh
 Mesh m_vox;
 

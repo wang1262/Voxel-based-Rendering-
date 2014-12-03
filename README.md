@@ -45,6 +45,21 @@ Two points of octree implementation:
  
  - Interior voxels, fully enclosed voxels, are unnecessary to be included in the 3D data set (limits the amount of 3D voxel data, which is the storage space)
 
-
 Reference: [Sparse voxel Octree](http://en.wikipedia.org/wiki/Sparse_voxel_octree), 
            [Simple Octree](https://github.com/brandonpelfrey/SimpleOctree)
+
+##Phase III Progress
+
+- Texture Mapping in VoxelPipe is Complete
+- SVO Cube Extraction is Complete
+
+![Textured Cow Octree] (images/textured_cow_octree.png)
+
+##Bloopers
+
+This is what happens when not enough memory is allocated for the SVO.
+
+![2 Cows No Memory SVO] (images/2_cows_octree_out_of_memory.png)
+
+!{Dragon with Texture in GPU Memory} (images/dragon_octree_texture_map_512.png)
+

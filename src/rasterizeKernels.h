@@ -9,7 +9,7 @@
 #include <thrust/random.h>
 #include <cuda.h>
 #include <cmath>
-#include "glm/glm.hpp"
+#include "sceneStructs.h"
 using namespace std;
 
 void kernelCleanup();

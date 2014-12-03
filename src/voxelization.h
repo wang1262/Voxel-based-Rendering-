@@ -18,7 +18,7 @@ const int T = 1 << log_T; //T is the tile size - voxels per tile (per dimension)
 const float world_size = 2.0f; //TODO: get this from the bounding box of the input mesh
 const float3 bbox0 = make_float3(-world_size, -world_size, -world_size);
 const float3 bbox1 = make_float3(world_size, world_size, world_size);
-const float CUBE_MESH_SCALE = 0.1;
+const float CUBE_MESH_SCALE = 0.1f;
 
 //Compute the 1/2 edge length for the resulting voxelization
 const float vox_size = world_size / float(N);
@@ -47,10 +47,10 @@ __device__ inline float3 getCenterFromIndex(int idx, int M, int T, float3 bbox0,
   return cent;
 }
 
-__host__ int voxelizeMesh(Mesh &m_in, int* d_voxels, int* d_values);
+__host__ int voxelizeMesh(Mesh &m_in, bmp_texture* h_tex, int* d_voxels, int* d_values);
 
 __host__ void extractCubesFromVoxelGrid(int* d_voxels, int numVoxels, int* d_values, Mesh &m_cube, Mesh &m_out);
 
-__host__ void voxelizeToCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out);
+__host__ void voxelizeToCubes(Mesh &m_in, bmp_texture* tex, Mesh &m_cube, Mesh &m_out);
 
 #endif ///VOXELIZATION_H

@@ -2,7 +2,6 @@
 #include "main.h"
 
 string path_prefix = "../../";
-bmp_texture tex;
 
 //-------------------------------
 //-------------MAIN--------------
@@ -287,9 +286,9 @@ void voxelizeScene() {
 
 	//Voxelize
   if (OCTREE){
-    voxelizeSVOCubes(m_in, m_cube, m_vox);
+    voxelizeSVOCubes(m_in, &tex, m_cube, m_vox);
   } else {
-    voxelizeToCubes(m_in, m_cube, m_vox);
+    voxelizeToCubes(m_in, &tex, m_cube, m_vox);
   }
 }
 

@@ -277,7 +277,7 @@ __host__ void extractCubesFromSVO(int* d_octree, int numVoxels, Mesh &m_cube, Me
   cudaFree(d_counter);
 }
 
-__host__ void voxelizeSVOCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
+__host__ void voxelizeSVOCubes(Mesh &m_in, bmp_texture* tex, Mesh &m_cube, Mesh &m_out) {
 
   //Voxelize the mesh input
   int numVoxels = N*N*N;
@@ -285,7 +285,7 @@ __host__ void voxelizeSVOCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
   int* d_values;
   cudaMalloc((void**)&d_voxels, numVoxels*sizeof(int));
   cudaMalloc((void**)&d_values, numVoxels*sizeof(int));
-  numVoxels = voxelizeMesh(m_in, d_voxels, d_values);
+  numVoxels = voxelizeMesh(m_in, tex, d_voxels, d_values);
 
   //Create the octree
   int* d_octree = NULL;
