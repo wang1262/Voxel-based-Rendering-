@@ -61,5 +61,5 @@ This is what happens when not enough memory is allocated for the SVO.
 
 ![2 Cows No Memory SVO] (images/2_cows_octree_out_of_memory.png)
 
-!{Dragon with Texture in GPU Memory} (images/dragon_octree_texture_map_512.png)
+![Dragon with Texture in GPU Memory] (images/dragon_octree_texture_map_512.png)
 
