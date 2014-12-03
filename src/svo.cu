@@ -66,7 +66,7 @@ __global__ void splitNodes(int* octree, int* numNodes, int poolSize) {
 
 }
 
-__global__ void fillNodes(int* voxels, int numVoxels, int* octree, int M, int T, float3 bbox0, float3 t_d, float3 p_d) {
+__global__ void fillNodes(int* voxels, int numVoxels, int* values, int* octree, int M, int T, float3 bbox0, float3 t_d, float3 p_d) {
 
   int index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -86,11 +86,11 @@ __global__ void fillNodes(int* voxels, int numVoxels, int* octree, int M, int T,
       int z = center.z > center_depth.z;
       this_node = node_idx + (x + (y << 1) + (z << 2));
 
-      has_child = octree[2 * this_node] & 0x40000000;
+      has_child = octree[2*this_node] & 0x40000000;
 
       if (has_child) {
         //The lowest 30 bits are the address
-        node_idx = octree[2 * this_node] & 0x3FFFFFFF;
+        node_idx = octree[2*this_node] & 0x3FFFFFFF;
 
         //Update the center depth for the next iteration
         center_depth.x += edge_length / 2 * (x ? 1 : -1);
@@ -99,14 +99,13 @@ __global__ void fillNodes(int* voxels, int numVoxels, int* octree, int M, int T,
       }
       edge_length /= 2.0f;
     }
-    //TODO: Pull this from the actual voxels
-    octree[2 * this_node + 1] = (255 << 7) + (255 << 23);
+    octree[2*this_node + 1] = values[index];
   }
 
 }
 
 __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, float3 bbox0, float scale_factor, int num_voxels, float* cube_vbo,
-  int cube_vbosize, int* cube_ibo, int cube_ibosize, float* cube_nbo, float* out_vbo, int* out_ibo, float* out_nbo) {
+  int cube_vbosize, int* cube_ibo, int cube_ibosize, float* cube_nbo, float* out_vbo, int* out_ibo, float* out_nbo, float* out_cbo) {
 
   //Get the index for the thread
   int idx = blockIdx.x*blockDim.x + threadIdx.x;
@@ -115,6 +114,7 @@ __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, floa
   float3 center = make_float3(0.0f, 0.0f, 0.0f);
   int pointer = 0;
   bool has_child = true;
+  int val2;
 
   while (has_child) {
     //Get the lowest 3 bits to encode the first move
@@ -122,6 +122,7 @@ __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, floa
 
     //Get the value from the octree
     int val = octree[2*(pointer+pos)];
+    val2 = octree[2*(pointer + pos) + 1];
 
     //It it is not occupied, do not continue
     has_child = val & 0x40000000;
@@ -162,12 +163,15 @@ __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, floa
     for (int i = 0; i < cube_vbosize; i++) {
       if (i % 3 == 0) {
         out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.x;
+        out_cbo[vbo_offset + i] = (float)((val2 & 0xFF) / 255.0);
       }
       else if (i % 3 == 1) {
         out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.y;
+        out_cbo[vbo_offset + i] = (float)(((val2 >> 7) & 0xFF) / 255.0);
       }
       else {
         out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.z;
+        out_cbo[vbo_offset + i] = (float)(((val2 >> 15) & 0xFF) / 255.0);
       }
       out_nbo[vbo_offset + i] = cube_nbo[i];
     }
@@ -181,7 +185,7 @@ __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, floa
 }
 
 //This is based on Cyril Crassin's approach
-__host__ void svoFromVoxels(int* d_voxels, int numVoxels, int* d_octree) {
+__host__ void svoFromVoxels(int* d_voxels, int numVoxels, int* d_values, int* d_octree) {
   int numNodes = 8;
   int startingNode = 0;
   int* d_numNodes;
@@ -205,7 +209,8 @@ __host__ void svoFromVoxels(int* d_voxels, int numVoxels, int* d_octree) {
   }
 
   //Now write values into the lowest level of the svo
-  fillNodes<<<(numVoxels / 256) + 1, 256>>>(d_voxels, numVoxels, d_octree, M, T, bbox0, t_d, p_d);
+  fillNodes<<<(numVoxels / 256) + 1, 256>>>(d_voxels, numVoxels, d_values, d_octree, M, T, bbox0, t_d, p_d);
+  cudaDeviceSynchronize();
 
   cudaFree(d_numNodes);
 }
@@ -221,9 +226,11 @@ __host__ void extractCubesFromSVO(int* d_octree, int numVoxels, Mesh &m_cube, Me
   float* d_vbo_out;
   int* d_ibo_out;
   float* d_nbo_out;
+  float* d_cbo_out;
   cudaMalloc((void**)&d_vbo_out, numVoxels * m_cube.vbosize * sizeof(float));
   cudaMalloc((void**)&d_ibo_out, numVoxels * m_cube.ibosize * sizeof(int));
   cudaMalloc((void**)&d_nbo_out, numVoxels * m_cube.nbosize * sizeof(float));
+  cudaMalloc((void**)&d_cbo_out, numVoxels * m_cube.nbosize * sizeof(float));
 
   //Warn if vbo and nbo are not same size on cube
   if (m_cube.vbosize != m_cube.nbosize) {
@@ -239,17 +246,19 @@ __host__ void extractCubesFromSVO(int* d_octree, int numVoxels, Mesh &m_cube, Me
 
   //Create resulting cube-ized mesh
   createCubeMeshFromSVO << <(N*N*N / 256) + 1, 256 >> >(d_octree, d_counter, log_N, bbox0, vox_size / CUBE_MESH_SCALE, numVoxels, thrust::raw_pointer_cast(&d_vbo_cube.front()),
-    m_cube.vbosize, thrust::raw_pointer_cast(&d_ibo_cube.front()), m_cube.ibosize, thrust::raw_pointer_cast(&d_nbo_cube.front()), d_vbo_out, d_ibo_out, d_nbo_out);
+    m_cube.vbosize, thrust::raw_pointer_cast(&d_ibo_cube.front()), m_cube.ibosize, thrust::raw_pointer_cast(&d_nbo_cube.front()), d_vbo_out, d_ibo_out, d_nbo_out, d_cbo_out);
 
   //Store output sizes
   m_out.vbosize = numVoxels * m_cube.vbosize;
   m_out.ibosize = numVoxels * m_cube.ibosize;
   m_out.nbosize = numVoxels * m_cube.nbosize;
+  m_out.cbosize = m_out.nbosize;
 
   //Memory allocation for the outputs
   m_out.vbo = (float*)malloc(m_out.vbosize * sizeof(float));
   m_out.ibo = (int*)malloc(m_out.ibosize * sizeof(int));
   m_out.nbo = (float*)malloc(m_out.nbosize * sizeof(float));
+  m_out.cbo = (float*)malloc(m_out.cbosize * sizeof(float));
 
   //Sync here after doing some CPU work
   cudaDeviceSynchronize();
@@ -259,6 +268,7 @@ __host__ void extractCubesFromSVO(int* d_octree, int numVoxels, Mesh &m_cube, Me
   cudaMemcpy(m_out.vbo, d_vbo_out, m_out.vbosize*sizeof(float), cudaMemcpyDeviceToHost);
   cudaMemcpy(m_out.ibo, d_ibo_out, m_out.ibosize*sizeof(int), cudaMemcpyDeviceToHost);
   cudaMemcpy(m_out.nbo, d_nbo_out, m_out.nbosize*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(m_out.cbo, d_cbo_out, m_out.cbosize*sizeof(float), cudaMemcpyDeviceToHost);
 
   ///Free GPU memory
   cudaFree(d_vbo_out);
@@ -272,23 +282,18 @@ __host__ void voxelizeSVOCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
   //Voxelize the mesh input
   int numVoxels = N*N*N;
   int* d_voxels;
-  int init_voxels[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  int* d_values;
   cudaMalloc((void**)&d_voxels, numVoxels*sizeof(int));
-  cudaMemcpy(d_voxels, init_voxels, 16*sizeof(int), cudaMemcpyHostToDevice);
-  numVoxels = voxelizeMesh(m_in, d_voxels);
+  cudaMalloc((void**)&d_values, numVoxels*sizeof(int));
+  numVoxels = voxelizeMesh(m_in, d_voxels, d_values);
 
   //Create the octree
   int* d_octree = NULL;
   cudaMalloc((void**)&d_octree, 32*log_N*numVoxels*sizeof(int));
-  svoFromVoxels(d_voxels, numVoxels, d_octree);
+  svoFromVoxels(d_voxels, numVoxels, d_values, d_octree);
 
   //Extract cubes from the leaves of the octree
   extractCubesFromSVO(d_octree, numVoxels, m_cube, m_out);
-
-  //Copy CBO from input directly
-  m_out.cbo = (float*)malloc(m_in.cbosize * sizeof(float));
-  memcpy(m_out.cbo, m_in.cbo, m_in.cbosize * sizeof(float));
-  m_out.cbosize = m_in.cbosize;
 
   //Free up GPU memory
   cudaFree(d_voxels);

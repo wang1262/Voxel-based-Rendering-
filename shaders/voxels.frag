@@ -10,7 +10,7 @@ void main (void){
    vec3 R = normalize(-reflect(L, fs_normal));
 
    //calculate Ambient Term:
-   vec4 Iamb = vec4(fs_color, 1.0);
+   vec4 Iamb = vec4(0.1*fs_color, 1.0);
 
    //calculate Diffuse Term:
    vec4 Idiff = vec4(0.45*fs_color, 1.0) * max(dot(fs_normal,L), 0.0);

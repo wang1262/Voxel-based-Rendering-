@@ -240,8 +240,8 @@ void runGL() {
 	glEnableVertexAttribArray(1);
 
   if (VOXELIZE) {
-    glBindBuffer(GL_ARRAY_BUFFER, buffers[1]);
-    glBufferData(GL_ARRAY_BUFFER, nbosize*sizeof(float), cbo, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, buffers[2]);
+    glBufferData(GL_ARRAY_BUFFER, cbosize*sizeof(float), cbo, GL_DYNAMIC_DRAW);
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
     glEnableVertexAttribArray(2);
   }
@@ -329,7 +329,7 @@ bool init(int argc, char* argv[]) {
 		return false;
 	}
 
-	readBMP((path_prefix + string("../textures/texture2.bmp")).c_str(), tex);
+	readBMP((path_prefix + string("../textures/texture1.bmp")).c_str(), tex);
 	width = 800;
 	height = 800;
 	window = glfwCreateWindow(width, height, "Voxel Rendering", NULL, NULL);

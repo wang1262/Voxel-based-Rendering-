@@ -31,7 +31,7 @@ struct ColorShader
     const int3   xyz) const
   {
     //Return G = 255, A = 255 for now
-    return (float) ((255 << 7) + (255 << 23));
+    return __int_as_float((255 << 7) + (255 << 23));
 
     //TODO: Pull the color from the texture using the barycentric/texcoords
   }
@@ -79,8 +79,17 @@ struct check_voxel {
   }
 };
 
-template <typename storage_type>
-__global__ void createCubeMesh(int* voxels, void* fb, int M, int T, float3 bbox0, float3 t_d, float3 p_d, float scale_factor, int num_voxels, float* cube_vbo, 
+__global__ void extractValues(void* fb, int* voxels, int num_voxels, int* values) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (index < num_voxels) {
+    //TODO: Make this support other storage_type's besides int32
+    float* tile = (float*)fb;
+    values[index] = __float_as_int(tile[voxels[index]]);
+  }
+}
+
+__global__ void createCubeMesh(int* voxels, int* values, int M, int T, float3 bbox0, float3 t_d, float3 p_d, float scale_factor, int num_voxels, float* cube_vbo, 
                                 int cube_vbosize, int* cube_ibo, int cube_ibosize, float* cube_nbo, float* out_vbo, int* out_ibo, float* out_nbo, float* out_cbo) {
 
   //Get the index for the thread
@@ -91,15 +100,18 @@ __global__ void createCubeMesh(int* voxels, void* fb, int M, int T, float3 bbox0
     int vbo_offset = idx * cube_vbosize;
     int ibo_offset = idx * cube_ibosize;
     float3 center = getCenterFromIndex(voxels[idx], M, T, bbox0, t_d, p_d);
-    float3 color = getColorFromIndex<storge_type>(voxels[idx], fb, M, T);
+    int color = values[idx];
 
     for (int i = 0; i < cube_vbosize; i++) {
       if (i % 3 == 0) {
         out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.x;
+        out_cbo[vbo_offset + i] = (float)((color & 0xFF)/255.0);
       } else if (i % 3 == 1) {
         out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.y;
+        out_cbo[vbo_offset + i] = (float)(((color >> 7) & 0xFF)/255.0);
       } else {
         out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.z;
+        out_cbo[vbo_offset + i] = (float)(((color >> 15) & 0xFF)/255.0);
       }
       out_nbo[vbo_offset + i] = cube_nbo[i];
     }
@@ -112,7 +124,7 @@ __global__ void createCubeMesh(int* voxels, void* fb, int M, int T, float3 bbox0
 
 }
 
-__host__ int voxelizeMesh(Mesh &m_in, int* d_voxels) {
+__host__ int voxelizeMesh(Mesh &m_in, int* d_voxels, int* d_values) {
 
   //Initialize sizes
   const int n_triangles = m_in.ibosize / 3;
@@ -168,11 +180,9 @@ __host__ int voxelizeMesh(Mesh &m_in, int* d_voxels) {
     context->fine_raster< voxelpipe::Bit, voxelpipe::BIT_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::ADD_BLENDING, voxelpipe::DefaultShader<voxelpipe::Bit> >(
       n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1, thrust::raw_pointer_cast(&d_fb.front()));
   } else {
-    context->fine_raster< voxelpipe::Float, voxelpipe::FP32S_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::ADD_BLENDING, ColorShader >(
+    context->fine_raster< voxelpipe::Float, voxelpipe::FP32S_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::MAX_BLENDING, ColorShader >(
       n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1, thrust::raw_pointer_cast(&d_fb.front()), my_shader);
   }
-
-  //TODO: Consider replacing this next part with scan/compact/decode rather than decode/compact
 
   //Get voxel centers
   int numVoxels = N*N*N;
@@ -184,12 +194,16 @@ __host__ int voxelizeMesh(Mesh &m_in, int* d_voxels) {
   //Stream Compact voxels to remove the empties
   numVoxels = thrust::copy_if(thrust::device_pointer_cast(d_vox), thrust::device_pointer_cast(d_vox) + numVoxels, thrust::device_pointer_cast(d_voxels), check_voxel()) - thrust::device_pointer_cast(d_voxels);
 
+  //Extract the values at these indices
+  extractValues<<<(numVoxels / 256) + 1, 256 >>>(thrust::raw_pointer_cast(&d_fb.front()), d_voxels, numVoxels, d_values);
+  cudaDeviceSynchronize();
+
   cudaFree(d_vox);
 
   return numVoxels;
 }
 
-__host__ void extractCubesFromVoxelGrid(int* d_voxels, int numVoxels, Mesh &m_cube, Mesh &m_out) {
+__host__ void extractCubesFromVoxelGrid(int* d_voxels, int numVoxels, int* d_values, Mesh &m_cube, Mesh &m_out) {
 
   //Move cube data to GPU
   thrust::device_vector<float> d_vbo_cube(m_cube.vbo, m_cube.vbo + m_cube.vbosize);
@@ -213,7 +227,7 @@ __host__ void extractCubesFromVoxelGrid(int* d_voxels, int numVoxels, Mesh &m_cu
   }
 
   //Create resulting cube-ized mesh
-  createCubeMesh << <(numVoxels / 256) + 1, 256 >> >(d_voxels, thrust::raw_pointer_cast(&d_fb.front()), M, T, bbox0, t_d, p_d, vox_size / CUBE_MESH_SCALE, numVoxels, thrust::raw_pointer_cast(&d_vbo_cube.front()),
+  createCubeMesh<<<(numVoxels / 256) + 1, 256>>>(d_voxels, d_values, M, T, bbox0, t_d, p_d, vox_size / CUBE_MESH_SCALE, numVoxels, thrust::raw_pointer_cast(&d_vbo_cube.front()),
     m_cube.vbosize, thrust::raw_pointer_cast(&d_ibo_cube.front()), m_cube.ibosize, thrust::raw_pointer_cast(&d_nbo_cube.front()), d_vbo_out, d_ibo_out, d_nbo_out, d_cbo_out);
 
   //Store output sizes
@@ -236,6 +250,7 @@ __host__ void extractCubesFromVoxelGrid(int* d_voxels, int numVoxels, Mesh &m_cu
   cudaMemcpy(m_out.vbo, d_vbo_out, m_out.vbosize*sizeof(float), cudaMemcpyDeviceToHost);
   cudaMemcpy(m_out.ibo, d_ibo_out, m_out.ibosize*sizeof(int), cudaMemcpyDeviceToHost);
   cudaMemcpy(m_out.nbo, d_nbo_out, m_out.nbosize*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(m_out.cbo, d_cbo_out, m_out.cbosize*sizeof(float), cudaMemcpyDeviceToHost);
 
   ///Free GPU memory
   cudaFree(d_vbo_out);
@@ -250,19 +265,15 @@ __host__ void voxelizeToCubes(Mesh &m_in, Mesh &m_cube, Mesh &m_out) {
   //Voxelize the mesh input
   int numVoxels = N*N*N;
   int* d_voxels;
+  int* d_values;
   cudaMalloc((void**)&d_voxels, numVoxels*sizeof(int));
-  numVoxels = voxelizeMesh(m_in, d_voxels);
+  cudaMalloc((void**)&d_values, numVoxels*sizeof(int));
+  numVoxels = voxelizeMesh(m_in, d_voxels, d_values);
 
   //Extract Cubes from the Voxel Grid
-  extractCubesFromVoxelGrid(d_voxels, numVoxels, m_cube, m_out);
-
-  //Copy CBO from input directly
-  /*
-  m_out.cbo = (float*)malloc(m_in.cbosize * sizeof(float));
-  memcpy(m_out.cbo, m_in.cbo, m_in.cbosize * sizeof(float));
-  m_out.cbosize = m_in.cbosize;
-  */
+  extractCubesFromVoxelGrid(d_voxels, numVoxels, d_values, m_cube, m_out);
 
   cudaFree(d_voxels);
+  cudaFree(d_values);
 }
 
