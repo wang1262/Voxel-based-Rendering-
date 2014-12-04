@@ -401,7 +401,7 @@ __global__ void verticesRasterizeKernel(triangle* primitives, int primitivesCoun
 	}
 }
 
-__global__ void fragmentShadeKernel(fragment* depthbuffer, glm::vec2 resolution, glm::vec3 *lightDir, bmp_texture *tex,glm::vec3 *device_data){
+__global__ void fragmentShadeKernel(fragment* depthbuffer, glm::vec2 resolution, glm::vec3 *lightDir, bmp_texture *tex, glm::vec3 *device_data){
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
   int y = (blockIdx.y * blockDim.y) + threadIdx.y;
   int index = x + (y * resolution.x);

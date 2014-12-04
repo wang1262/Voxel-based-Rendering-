@@ -308,7 +308,7 @@ void readBMP(const char* filename, bmp_texture &tex)
     unsigned char* data = new unsigned char[size]; // allocate 3 bytes per pixel
     fread(data, sizeof(unsigned char), size, f); // read the rest of the data at once
     fclose(f);
-	glm::vec3 *color_data = new glm::vec3[size/3];
+	  glm::vec3 *color_data = new glm::vec3[size/3];
     for(i = 0; i < size; i += 3){
 			color_data[i/3].r = (int)data[i+2]/255.0f;
 			color_data[i/3].g = (int)data[i+1]/255.0f;

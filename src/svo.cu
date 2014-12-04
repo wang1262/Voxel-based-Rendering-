@@ -128,7 +128,7 @@ __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, floa
     has_child = val & 0x40000000;
 
     //Don't continue if it does not have a child
-    if (!has_child && (octree[2 * (pointer + pos) + 1] >> 23 == 0)) {
+    if (!has_child && (octree[2 * (pointer + pos) + 1] >> 24 == 0)) {
       return;
     }
 
@@ -167,11 +167,11 @@ __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, floa
       }
       else if (i % 3 == 1) {
         out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.y;
-        out_cbo[vbo_offset + i] = (float)(((val2 >> 7) & 0xFF) / 255.0);
+        out_cbo[vbo_offset + i] = (float)(((val2 >> 8) & 0xFF) / 255.0);
       }
       else {
         out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.z;
-        out_cbo[vbo_offset + i] = (float)(((val2 >> 15) & 0xFF) / 255.0);
+        out_cbo[vbo_offset + i] = (float)(((val2 >> 16) & 0xFF) / 255.0);
       }
       out_nbo[vbo_offset + i] = cube_nbo[i];
     }
@@ -289,7 +289,7 @@ __host__ void voxelizeSVOCubes(Mesh &m_in, bmp_texture* tex, Mesh &m_cube, Mesh 
 
   //Create the octree
   int* d_octree = NULL;
-  cudaMalloc((void**)&d_octree, 32*log_N*numVoxels*sizeof(int));
+  cudaMalloc((void**)&d_octree, 8*log_N*numVoxels*sizeof(int));
   svoFromVoxels(d_voxels, numVoxels, d_values, d_octree);
 
   //Extract cubes from the leaves of the octree

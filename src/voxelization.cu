@@ -32,7 +32,7 @@ struct ColorShader
   {
     //If there is no texture, just return green
     if (tex_width == 0) {
-      return __int_as_float((255 << 7) + (255 << 23));
+      return __int_as_float((255 << 8) + (127 << 24));
     }
 
     //If there are no texcoordinates, just return the first value in the texture
@@ -40,7 +40,7 @@ struct ColorShader
       int r = (int)(texture[0].r * 255.0);
       int g = (int)(texture[0].g * 255.0);
       int b = (int)(texture[0].b * 255.0);
-      return __int_as_float(r+(g << 7) + (b << 15) + (255 << 23));
+      return __int_as_float(r+(g << 8) + (b << 16) + (127 << 24));
     }
 
     //Get the texture coordinates from the triangle id
@@ -65,14 +65,12 @@ struct ColorShader
     int b = (int) (clamp(color.b, 0.0f, 1.0f) * 255.0f);
 
     //Compact
-    int val = r + (g << 7) + (b << 15) + (255 << 23);
+    int val = r + (g << 8) + (b << 16) + (127 << 24);
 
     return __int_as_float(val);
-
   }
 };
 
-template<typename storage_type>
 __global__ void getOccupiedVoxels(void* fb, int M, int T, int* voxels) {
   int T3 = T*T*T;
   int M3 = M*M*M;
@@ -82,20 +80,12 @@ __global__ void getOccupiedVoxels(void* fb, int M, int T, int* voxels) {
 
   if (pix_num < T3 && tile_num < M3) {
     //TODO: Is there any benefit in making this shared?
-    storage_type* tile;
+    float* tile;
 
     bool is_occupied;
-    if (T <= 8 && BIT_MODE) {
-      tile = (storage_type*)fb + tile_num*T3;
-      is_occupied = tile[pix_num];
-    } else if (BIT_MODE) {
-      tile = (storage_type*)fb + tile_num*(T3 >> 5);
-      is_occupied = (tile[pix_num >> 5] & (1 << (pix_num & 31)));
-    } else {
-      tile = (storage_type*)fb + tile_num*T3;
-      int alpha = ((int)tile[pix_num]) >> 23;
-      is_occupied = alpha > 0;
-    }
+    tile = (float*)fb + tile_num*T3;
+    int alpha = __float_as_int(tile[pix_num]) >> 24;
+    is_occupied = alpha > 0;
 
     if (is_occupied) {
       voxels[tile_num*T3 + pix_num] = tile_num*T3 + pix_num;
@@ -143,10 +133,10 @@ __global__ void createCubeMesh(int* voxels, int* values, int M, int T, float3 bb
         out_cbo[vbo_offset + i] = (float)((color & 0xFF)/255.0);
       } else if (i % 3 == 1) {
         out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.y;
-        out_cbo[vbo_offset + i] = (float)(((color >> 7) & 0xFF)/255.0);
+        out_cbo[vbo_offset + i] = (float)(((color >> 8) & 0xFF)/255.0);
       } else {
         out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.z;
-        out_cbo[vbo_offset + i] = (float)(((color >> 15) & 0xFF)/255.0);
+        out_cbo[vbo_offset + i] = (float)(((color >> 16) & 0xFF)/255.0);
       }
       out_nbo[vbo_offset + i] = cube_nbo[i];
     }
@@ -194,12 +184,8 @@ __host__ int voxelizeMesh(Mesh &m_in, bmp_texture* h_tex, int* d_voxels, int* d_
   }
   first_time = false;
 
-  //Define types for the voxelization
-  typedef voxelpipe::FR::TileOp<voxelpipe::Bit, voxelpipe::ADD_BLENDING, log_T> tile_op_type;
-  typedef typename tile_op_type::storage_type storage_type;
-
   //Initialize the result data on the device
-  thrust::device_vector<storage_type>  d_fb(M*M*M * tile_op_type::STORAGE_SIZE);
+  thrust::device_vector<float>  d_fb(M*M*M * T*T*T);
 
   //Copy the texture to the device
   glm::vec3 *device_tex = NULL;
@@ -221,13 +207,8 @@ __host__ int voxelizeMesh(Mesh &m_in, bmp_texture* h_tex, int* d_voxels, int* d_
 
   //Perform coarse and fine voxelization
   context->coarse_raster(n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1);
-  if (BIT_MODE) {
-    context->fine_raster< voxelpipe::Bit, voxelpipe::BIT_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::ADD_BLENDING, voxelpipe::DefaultShader<voxelpipe::Bit> >(
-      n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1, thrust::raw_pointer_cast(&d_fb.front()));
-  } else {
-    context->fine_raster< voxelpipe::Float, voxelpipe::FP32S_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::MAX_BLENDING, ColorShader >(
-      n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1, thrust::raw_pointer_cast(&d_fb.front()), my_shader);
-  }
+  context->fine_raster< voxelpipe::Float, voxelpipe::FP32S_FORMAT, voxelpipe::THIN_RASTER, voxelpipe::NO_BLENDING, ColorShader >(
+    n_triangles, n_vertices, thrust::raw_pointer_cast(&d_triangles.front()), thrust::raw_pointer_cast(&d_vertices.front()), bbox0, bbox1, thrust::raw_pointer_cast(&d_fb.front()), my_shader);
 
   cudaFree(device_tex);
   cudaFree(device_texcoord);
@@ -236,7 +217,7 @@ __host__ int voxelizeMesh(Mesh &m_in, bmp_texture* h_tex, int* d_voxels, int* d_
   int numVoxels = N*N*N;
   int* d_vox;
   cudaMalloc((void**)&d_vox, numVoxels*sizeof(int));
-  getOccupiedVoxels<storage_type> << <N*N*N, 256 >> >(thrust::raw_pointer_cast(&d_fb.front()), M, T, d_vox);
+  getOccupiedVoxels<< <N*N*N, 256 >> >(thrust::raw_pointer_cast(&d_fb.front()), M, T, d_vox);
   cudaDeviceSynchronize();
 
   //Stream Compact voxels to remove the empties
