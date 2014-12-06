@@ -28,7 +28,7 @@ __global__ void flagNodes(int* voxels, int numVoxels, int* octree, int M, int T,
 
       if (i < tree_depth - 1) {
         //The lowest 30 bits are the address
-        node_idx = octree[2*this_node] & 0x3FFFFFFF;
+        node_idx = octree[2 * this_node] & 0x3FFFFFFF;
 
         //Update the center depth for the next iteration
         center_depth.x += edge_length / 2 * (x ? 1 : -1);
@@ -37,18 +37,18 @@ __global__ void flagNodes(int* voxels, int numVoxels, int* octree, int M, int T,
       }
       edge_length /= 2.0f;
     }
-    octree[2*this_node] = octree[2*this_node] | 0x40000000;
+    octree[2 * this_node] = octree[2 * this_node] | 0x40000000;
   }
 
 }
 
-__global__ void splitNodes(int* octree, int* numNodes, int poolSize) {
+__global__ void splitNodes(int* octree, int* numNodes, int poolSize, int startNode) {
 
   int index = blockIdx.x * blockDim.x + threadIdx.x;
 
   //Don't do anything if its out of bounds
   if (index < poolSize) {
-    int node = octree[2*index];
+    int node = octree[2 * (index+startNode)];
 
     //Split the node if its flagged
     if (node & 0x40000000) {
@@ -56,12 +56,12 @@ __global__ void splitNodes(int* octree, int* numNodes, int poolSize) {
       int newNode = atomicAdd(numNodes, 8);
 
       //Point this node at the new tile
-      octree[2 * index] = (octree[2 * index] & 0xC0000000) | (newNode & 0x3FFFFFFF);
+      octree[2 * (index+startNode)] = (octree[2 * (index+startNode)] & 0xC0000000) | (newNode & 0x3FFFFFFF);
 
       //Initialize new child nodes to 0's
       for (int off = 0; off < 8; off++) {
-        octree[2*(newNode + off)] = 0;
-        octree[2*(newNode + off) + 1] = 0;
+        octree[2 * (newNode + off)] = 0;
+        octree[2 * (newNode + off) + 1] = 0;
       }
     }
   }
@@ -88,11 +88,11 @@ __global__ void fillNodes(int* voxels, int numVoxels, int* values, int* octree, 
       int z = center.z > center_depth.z;
       this_node = node_idx + (x + (y << 1) + (z << 2));
 
-      has_child = octree[2*this_node] & 0x40000000;
+      has_child = octree[2 * this_node] & 0x40000000;
 
       if (has_child) {
         //The lowest 30 bits are the address
-        node_idx = octree[2*this_node] & 0x3FFFFFFF;
+        node_idx = octree[2 * this_node] & 0x3FFFFFFF;
 
         //Update the center depth for the next iteration
         center_depth.x += edge_length / 2 * (x ? 1 : -1);
@@ -101,18 +101,23 @@ __global__ void fillNodes(int* voxels, int numVoxels, int* values, int* octree, 
       }
       edge_length /= 2.0f;
     }
-    octree[2*this_node + 1] = values[index];
+    octree[2 * this_node + 1] = values[index];
   }
 
 }
 
-__global__ void mipmapNodes(int* octree, int poolSize) {
+__global__ void mipmapNodes(int* octree, int poolSize, int startNode) {
 
   int index = blockIdx.x * blockDim.x + threadIdx.x;
 
   //Don't do anything if its out of bounds
   if (index < poolSize) {
-    int node = octree[2 * index];
+    int node = octree[2 * (index + startNode)];
+
+    //Don't do anything if this node has no children
+    if (!(node & 0x40000000)) {
+      return;
+    }
 
     //Get the child pointer
     int childPoint = (node & 0x3FFFFFFF);
@@ -132,7 +137,7 @@ __global__ void mipmapNodes(int* octree, int poolSize) {
     int g = (int) (val.g);
     int b = (int) (val.b);
     int a = (int) (val.a);
-    octree[(2 * index) + 1] = r + (g << 8) + (b << 16) + (a << 24);
+    octree[(2 * (index + startNode)) + 1] = r + (g << 8) + (b << 16) + (a << 24);
   }
 
 }
@@ -236,7 +241,7 @@ __host__ void svoFromVoxels(int* d_voxels, int numVoxels, int* d_values, int* d_
     cudaDeviceSynchronize();
 
     //Then, parallize on nodes and subdivide
-    splitNodes<<<((numNodes - startingNodes.top()) / 256) + 1, 256>>>(&d_octree[2*startingNodes.top()], d_numNodes, numNodes - startingNodes.top());
+    splitNodes<<<((numNodes - startingNodes.top()) / 256) + 1, 256>>>(d_octree, d_numNodes, numNodes - startingNodes.top(), startingNodes.top());
     startingNodes.push(numNodes);
 
     cudaDeviceSynchronize();
@@ -248,11 +253,10 @@ __host__ void svoFromVoxels(int* d_voxels, int numVoxels, int* d_values, int* d_
   cudaDeviceSynchronize();
 
   //Loop through the levels of the svo bottom to top and map the values by averaging child values
-  startingNodes.pop();
   numNodes = startingNodes.top(); //Skip the lowest level since the fillNodes() kernel handled that level
   startingNodes.pop();
   while (!startingNodes.empty()) {
-    mipmapNodes << <((numNodes - startingNodes.top()) / 256) + 1, 256 >> >(&d_octree[2 * startingNodes.top()], numNodes - startingNodes.top());
+    mipmapNodes << <((numNodes - startingNodes.top()) / 256) + 1, 256 >> >(d_octree, numNodes - startingNodes.top(), startingNodes.top());
     cudaDeviceSynchronize();
 
     numNodes = startingNodes.top();
@@ -291,8 +295,11 @@ __host__ void extractCubesFromSVO(int* d_octree, int numVoxels, Mesh &m_cube, Me
   cudaMalloc((void**)&d_counter, sizeof(int));
   cudaMemcpy(d_counter, &initial_count, sizeof(int), cudaMemcpyHostToDevice);
 
+  //Determine how to scale the number of threads needed based on the octree depth to render
+  int fac = (log_N > log_SVO_N) ? pow(8, log_N - log_SVO_N) : 1;
+
   //Create resulting cube-ized mesh
-  createCubeMeshFromSVO << <(N*N*N / 256) + 1, 256 >> >(d_octree, d_counter, log_N, bbox0, CUBE_MESH_SCALE, numVoxels, thrust::raw_pointer_cast(&d_vbo_cube.front()),
+  createCubeMeshFromSVO << <(N*N*N / 256 / fac) + 1, 256 >> >(d_octree, d_counter, log_SVO_N, bbox0, CUBE_MESH_SCALE, numVoxels, thrust::raw_pointer_cast(&d_vbo_cube.front()),
     m_cube.vbosize, thrust::raw_pointer_cast(&d_ibo_cube.front()), m_cube.ibosize, thrust::raw_pointer_cast(&d_nbo_cube.front()), d_vbo_out, d_ibo_out, d_nbo_out, d_cbo_out);
 
   //Store output sizes
