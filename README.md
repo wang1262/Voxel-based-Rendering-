@@ -52,8 +52,9 @@ Reference: [Sparse voxel Octree](http://en.wikipedia.org/wiki/Sparse_voxel_octre
 
 - Texture Mapping in VoxelPipe is Complete
 - SVO Cube Extraction is Complete
+- Filling values to interior SVO nodes is Complete
 
-![Textured Cow Octree] (images/textured_cow_octree.png)
+![Textured Dragon Octree] (images/textured_dragon_svo_gl.png)
 
 ##Bloopers
 

@@ -33,14 +33,14 @@ int main(int argc, char** argv){
 	}*/
 
 	int choice = 2;
-	cout<<"Please type which scene to load? '1'(dragon), '2'(2 cows), '3'(all_three), '4'(cow_tex)."<<endl;
+	cout<<"Please type which scene to load? '1'(dragon), '2'(2 cows), '3'(all_three), '4'(cow)."<<endl;
 	cout<<"Press ENTER after the number input :)\n"<<endl;
 	cin>>choice;
 
 	string local_path = path_prefix + "../objs/";
 	string data = local_path+ "2cows.obj";
 	if(choice==1)
-		data = local_path+ "dragon.obj";
+		data = local_path+ "dragon_tex.obj";
 	else if(choice==2)
 		data = local_path+ "2cows.obj";
 	else if(choice==3)

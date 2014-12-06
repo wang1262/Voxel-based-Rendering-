@@ -12,7 +12,7 @@ const int M = 1 << (log_N - log_T); //M is the total number of tiles (per dimens
 const int T = 1 << log_T; //T is the tile size - voxels per tile (per dimension)
 
 //Create bounding box to perform voxelization within
-const float world_size = 2.0f; //TODO: get this from the bounding box of the input mesh
+const float world_size = 2.5f; //TODO: get this from the bounding box of the input mesh
 const float3 bbox0 = make_float3(-world_size, -world_size, -world_size);
 const float3 bbox1 = make_float3(world_size, world_size, world_size);
 const float CUBE_MESH_SCALE = 0.1f;

@@ -5,6 +5,8 @@
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 
+#include <stack>
+
 __global__ void flagNodes(int* voxels, int numVoxels, int* octree, int M, int T, float3 bbox0, float3 t_d, float3 p_d, int tree_depth) {
 
   int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -104,7 +106,38 @@ __global__ void fillNodes(int* voxels, int numVoxels, int* values, int* octree, 
 
 }
 
-__global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, float3 bbox0, float scale_factor, int num_voxels, float* cube_vbo,
+__global__ void mipmapNodes(int* octree, int poolSize) {
+
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+
+  //Don't do anything if its out of bounds
+  if (index < poolSize) {
+    int node = octree[2 * index];
+
+    //Get the child pointer
+    int childPoint = (node & 0x3FFFFFFF);
+
+    //Loop through children values and average them
+    glm::vec4 val = glm::vec4(0.0);
+    for (int i = 0; i < 8; i++) {
+      int child_val = octree[2*(childPoint+i) + 1];
+      val.r += (float) (child_val & 0xFF) / 8.0f;
+      val.g += (float) ((child_val >> 8) & 0xFF) / 8.0f;
+      val.b += (float) ((child_val >> 16) & 0xFF) / 8.0f;
+      val.a += (float) ((child_val >> 24) & 0x7F) / 8.0f;
+    }
+
+    //Assign value of this node to the average
+    int r = (int) (val.r);
+    int g = (int) (val.g);
+    int b = (int) (val.b);
+    int a = (int) (val.a);
+    octree[(2 * index) + 1] = r + (g << 8) + (b << 16) + (a << 24);
+  }
+
+}
+
+__global__ void createCubeMeshFromSVO(int* octree, int* counter, int total_depth, float3 bbox0, float cube_scale, int num_voxels, float* cube_vbo,
   int cube_vbosize, int* cube_ibo, int cube_ibosize, float* cube_nbo, float* out_vbo, int* out_ibo, float* out_nbo, float* out_cbo) {
 
   //Get the index for the thread
@@ -115,8 +148,9 @@ __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, floa
   int pointer = 0;
   bool has_child = true;
   int val2;
+  int depth = 0;
 
-  while (has_child) {
+  while (has_child && depth++ < total_depth) {
     //Get the lowest 3 bits to encode the first move
     int pos = idx & 0x7;
 
@@ -162,15 +196,15 @@ __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, floa
 
     for (int i = 0; i < cube_vbosize; i++) {
       if (i % 3 == 0) {
-        out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.x;
+        out_vbo[vbo_offset + i] = cube_vbo[i] * (edge_length/cube_scale) + center.x;
         out_cbo[vbo_offset + i] = (float)((val2 & 0xFF) / 255.0);
       }
       else if (i % 3 == 1) {
-        out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.y;
+        out_vbo[vbo_offset + i] = cube_vbo[i] * (edge_length/cube_scale) + center.y;
         out_cbo[vbo_offset + i] = (float)(((val2 >> 8) & 0xFF) / 255.0);
       }
       else {
-        out_vbo[vbo_offset + i] = cube_vbo[i] * scale_factor + center.z;
+        out_vbo[vbo_offset + i] = cube_vbo[i] *(edge_length/cube_scale) + center.z;
         out_cbo[vbo_offset + i] = (float)(((val2 >> 16) & 0xFF) / 255.0);
       }
       out_nbo[vbo_offset + i] = cube_nbo[i];
@@ -187,7 +221,8 @@ __global__ void createCubeMeshFromSVO(int* octree, int* counter, int depth, floa
 //This is based on Cyril Crassin's approach
 __host__ void svoFromVoxels(int* d_voxels, int numVoxels, int* d_values, int* d_octree) {
   int numNodes = 8;
-  int startingNode = 0;
+  std::stack<int> startingNodes;
+  startingNodes.push(0);
   int* d_numNodes;
   cudaMalloc((void**)&d_numNodes, sizeof(int));
   cudaMemcpy(d_numNodes, &numNodes, sizeof(int), cudaMemcpyHostToDevice);
@@ -201,16 +236,28 @@ __host__ void svoFromVoxels(int* d_voxels, int numVoxels, int* d_values, int* d_
     cudaDeviceSynchronize();
 
     //Then, parallize on nodes and subdivide
-    splitNodes<<<((numNodes - startingNode) / 256) + 1, 256>>>(&d_octree[2*startingNode], d_numNodes, numNodes - startingNode);
-    startingNode = numNodes;
+    splitNodes<<<((numNodes - startingNodes.top()) / 256) + 1, 256>>>(&d_octree[2*startingNodes.top()], d_numNodes, numNodes - startingNodes.top());
+    startingNodes.push(numNodes);
 
     cudaDeviceSynchronize();
     cudaMemcpy(&numNodes, d_numNodes, sizeof(int), cudaMemcpyDeviceToHost);
   }
 
-  //Now write values into the lowest level of the svo
+  //Write voxel values into the lowest level of the svo
   fillNodes<<<(numVoxels / 256) + 1, 256>>>(d_voxels, numVoxels, d_values, d_octree, M, T, bbox0, t_d, p_d);
   cudaDeviceSynchronize();
+
+  //Loop through the levels of the svo bottom to top and map the values by averaging child values
+  startingNodes.pop();
+  numNodes = startingNodes.top(); //Skip the lowest level since the fillNodes() kernel handled that level
+  startingNodes.pop();
+  while (!startingNodes.empty()) {
+    mipmapNodes << <((numNodes - startingNodes.top()) / 256) + 1, 256 >> >(&d_octree[2 * startingNodes.top()], numNodes - startingNodes.top());
+    cudaDeviceSynchronize();
+
+    numNodes = startingNodes.top();
+    startingNodes.pop();
+  }
 
   cudaFree(d_numNodes);
 }
@@ -245,7 +292,7 @@ __host__ void extractCubesFromSVO(int* d_octree, int numVoxels, Mesh &m_cube, Me
   cudaMemcpy(d_counter, &initial_count, sizeof(int), cudaMemcpyHostToDevice);
 
   //Create resulting cube-ized mesh
-  createCubeMeshFromSVO << <(N*N*N / 256) + 1, 256 >> >(d_octree, d_counter, log_N, bbox0, vox_size / CUBE_MESH_SCALE, numVoxels, thrust::raw_pointer_cast(&d_vbo_cube.front()),
+  createCubeMeshFromSVO << <(N*N*N / 256) + 1, 256 >> >(d_octree, d_counter, log_N, bbox0, CUBE_MESH_SCALE, numVoxels, thrust::raw_pointer_cast(&d_vbo_cube.front()),
     m_cube.vbosize, thrust::raw_pointer_cast(&d_ibo_cube.front()), m_cube.ibosize, thrust::raw_pointer_cast(&d_nbo_cube.front()), d_vbo_out, d_ibo_out, d_nbo_out, d_cbo_out);
 
   //Store output sizes
