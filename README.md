@@ -56,9 +56,11 @@ Reference: [Sparse voxel Octree](http://en.wikipedia.org/wiki/Sparse_voxel_octre
 - Added the ability to extract cubes from SVO at arbitrary resolution
 
 This shows the stanford dragon with textures mapped into the voxel grid, then filled into the SVO and extracted.
+
 ![Textured Dragon Octree] (images/textured_dragon_svo_gl.png)
 
 This is the same as before, though the cubes rendered are extracted from a higher level in the octree than the original voxelization, so the values are mip-mapped.
+
 ![Textured Dragon Octree Mip-Mapped] (images/textured_dragon_svo_mipmapped_gl.png)
 
 ##Bloopers
