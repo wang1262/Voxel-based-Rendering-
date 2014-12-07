@@ -1,6 +1,8 @@
 A Voxel Rendering Pipeline in CUDA for Real-time Indirect Illumination
 ======================
 
+See our results on [YouTube](http://youtu.be/UgqYFQuIGmc)
+
 Dave Kotfis and Jiawei Wang
 CIS 565 Final Project – Fall 2014
 
