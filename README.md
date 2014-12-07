@@ -82,14 +82,15 @@ Data Construction / Cube Extraction Timing:
 
 CUDA vs. OpenGL. Voxel rendering pipeline performance comparison.
 (With NVidia GT750M)
+
 | Voxelize | Model | CUDA Render Time | CUDA FPS | OpenGL Render Time | OpenGL FPS |
 | --- | --- | --- | --- | --- | --- |
 | Without Voxelization | Dragon | 47 ms | 18 | 15 ms | 60 |
-|  | Two Cows | 16 ms | 35 | 0~5 ms | 60 |
+|  | Two-Cows | 16 ms | 35 | 0~5 ms | 60 |
 |  | All Three* | 55 ms | 17 | 15 ms | 58 |
-|  | Bunny | 31 ms | 29 | ~0 ms | 60 ms |
+|  | Bunny | 31 ms | 29 | ~0 ms | 60 |
 | With Voxelization | Dragon | 156 ms | 5 | 31 ms | 30 |
-|  | Two Cows | 23 ms | 27 | ~0 ms | 60 |
+|  | Two-Cows | 23 ms | 27 | ~0 ms | 60 |
 |  | All Three | 141 ms | 7 | 16 ms | 34 |
 |  | Bunny | 109 ms | 10 | 15 ms | 47 |
 
