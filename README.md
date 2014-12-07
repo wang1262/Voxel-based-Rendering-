@@ -57,7 +57,7 @@ This is the same as before, though the cubes rendered are extracted from a highe
 
 ##Performance Analysis
 
-Data Structure Sizes:
+ - Data Structure Sizes:
 
 | Model | Resolution | # Occupied Voxels | # SVO Nodes |
 | --- | --- | --- | --- |
@@ -68,7 +68,7 @@ Data Structure Sizes:
 |  | 256 | 20,604 | 58,536 |
 |  | 512 | 69,865 | 225,360 |
 
-The following timing statistics were produced using an NVidia GTX 770.
+ - The following timing statistics were produced using an NVidia GTX 770.
 Data Construction / Cube Extraction Timing:
 
 | Model | Resolution | Voxelization | Voxel Grid to Cubes | SVO from Voxel Grid | SVO to Cubes |
@@ -80,7 +80,7 @@ Data Construction / Cube Extraction Timing:
 |  | 256 | 49 ms | 30.5 ms | 2.79 ms | 33.6 ms |
 |  | 512 | 221 ms | 90.9 ms | 2.7 ms | 71.8 ms |
 
-CUDA vs. OpenGL. Voxel rendering pipeline performance comparison.
+ - CUDA vs. OpenGL. Voxel rendering pipeline performance comparison.
 (With NVidia GT750M)
 
 | Voxelize | Model | CUDA Render Time | CUDA FPS | OpenGL Render Time | OpenGL FPS |
