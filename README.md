@@ -56,6 +56,7 @@ This is the same as before, though the cubes rendered are extracted from a highe
 ##Performance Analysis
 
 Data Structure Sizes:
+
 | Model | Resolution | # Occupied Voxels | # SVO Nodes |
 | --- | --- | --- | --- |
 | Bunny | 128 | 3,234 | 9,656 |
@@ -67,6 +68,7 @@ Data Structure Sizes:
 
 The following timing statistics were produced using an NVidia GTX 770.
 Data Construction / Cube Extraction Timing:
+
 | Model | Resolution | Voxelization | Voxel Grid to Cubes | SVO from Voxel Grid | SVO to Cubes |
 | --- | --- | --- | --- | --- | --- |
 | Bunny | 128 | 16.2 ms | 8.46 ms | 1.85 ms | 7.78 ms |
