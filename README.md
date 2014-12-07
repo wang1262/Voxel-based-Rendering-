@@ -53,6 +53,29 @@ This is the same as before, though the cubes rendered are extracted from a highe
 
 ![Textured Dragon Octree Mip-Mapped] (images/textured_dragon_svo_mipmapped_gl.png)
 
+##Performance Analysis
+
+Data Structure Sizes:
+| Model | Resolution | # Occupied Voxels | # SVO Nodes |
+| --- | --- | --- | --- |
+| Bunny | 128 | 3,234 | 9,656 |
+|  | 256 | 11,603 | 38,408 |
+|  | 512 | 43,126 | 151,552 |
+| Dragon | 128 | 6,327 | 14,696 |
+|  | 256 | 20,604 | 58,536 |
+|  | 512 | 69,865 | 225,360 |
+
+The following timing statistics were produced using an NVidia GTX 770.
+Data Construction / Cube Extraction Timing:
+| Model | Resolution | Voxelization | Voxel Grid to Cubes | SVO from Voxel Grid | SVO to Cubes |
+| --- | --- | --- | --- | --- | --- |
+| Bunny | 128 | 16.2 ms | 8.46 ms | 1.85 ms | 7.78 ms |
+|  | 256 | 54.2 ms | 19.7 ms | 2.07 ms | 22.6 ms |
+|  | 512 | 203.9 ms | 48.6 ms | 2.3 ms | 39.9 ms |
+| Dragon | 128 | 26.8 ms | 12.1 ms | 1.06 ms | 12.06 ms |
+|  | 256 | 49 ms | 30.5 ms | 2.79 ms | 33.6 ms |
+|  | 512 | 221 ms | 90.9 ms | 2.7 ms | 71.8 ms |
+
 ##References
 
 [Interactive Indirect Illumination Using Voxel Cone Tracing] (https://hal.inria.fr/hal-00650196)

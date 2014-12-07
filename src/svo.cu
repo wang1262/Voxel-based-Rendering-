@@ -7,6 +7,8 @@
 
 #include <stack>
 
+#include "timingUtils.h"
+
 __global__ void flagNodes(int* voxels, int numVoxels, int* octree, int M, int T, float3 bbox0, float3 t_d, float3 p_d, int tree_depth) {
 
   int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -248,6 +250,8 @@ __host__ void svoFromVoxels(int* d_voxels, int numVoxels, int* d_values, int* d_
     cudaMemcpy(&numNodes, d_numNodes, sizeof(int), cudaMemcpyDeviceToHost);
   }
 
+  std::cout << "Num Nodes: " << numNodes << std::endl;
+
   //Write voxel values into the lowest level of the svo
   fillNodes<<<(numVoxels / 256) + 1, 256>>>(d_voxels, numVoxels, d_values, d_octree, M, T, bbox0, t_d, p_d);
   cudaDeviceSynchronize();
@@ -344,10 +348,14 @@ __host__ void voxelizeSVOCubes(Mesh &m_in, bmp_texture* tex, Mesh &m_cube, Mesh 
   //Create the octree
   int* d_octree = NULL;
   cudaMalloc((void**)&d_octree, 8*log_N*numVoxels*sizeof(int));
+  startTiming();
   svoFromVoxels(d_voxels, numVoxels, d_values, d_octree);
+  std::cout << "Build SVO Time: " << stopTiming() << std::endl;
 
   //Extract cubes from the leaves of the octree
+  startTiming();
   extractCubesFromSVO(d_octree, numVoxels, m_cube, m_out);
+  std::cout << "Extract SVO Time: " << stopTiming() << std::endl;
 
   //Free up GPU memory
   cudaFree(d_voxels);

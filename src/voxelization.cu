@@ -9,6 +9,8 @@
 
 #include <voxelpipe/voxelpipe.h>
 
+#include "timingUtils.h"
+
 voxelpipe::FRContext<log_N, log_T>*  context;
 bool first_time = true;
 
@@ -223,6 +225,8 @@ __host__ int voxelizeMesh(Mesh &m_in, bmp_texture* h_tex, int* d_voxels, int* d_
   //Stream Compact voxels to remove the empties
   numVoxels = thrust::copy_if(thrust::device_pointer_cast(d_vox), thrust::device_pointer_cast(d_vox) + numVoxels, thrust::device_pointer_cast(d_voxels), check_voxel()) - thrust::device_pointer_cast(d_voxels);
 
+  std::cout << "Num Voxels: " << numVoxels << std::endl;
+
   //Extract the values at these indices
   extractValues<<<(numVoxels / 256) + 1, 256 >>>(thrust::raw_pointer_cast(&d_fb.front()), d_voxels, numVoxels, d_values);
   cudaDeviceSynchronize();
@@ -297,10 +301,14 @@ __host__ void voxelizeToCubes(Mesh &m_in, bmp_texture* tex, Mesh &m_cube, Mesh &
   int* d_values;
   cudaMalloc((void**)&d_voxels, numVoxels*sizeof(int));
   cudaMalloc((void**)&d_values, numVoxels*sizeof(int));
+  startTiming();
   numVoxels = voxelizeMesh(m_in, tex, d_voxels, d_values);
+  std::cout << "Vox Time: " << stopTiming() << std::endl;
 
   //Extract Cubes from the Voxel Grid
+  startTiming();
   extractCubesFromVoxelGrid(d_voxels, numVoxels, d_values, m_cube, m_out);
+  std::cout << "Extraction Time: " << stopTiming() << std::endl;
 
   cudaFree(d_voxels);
   cudaFree(d_values);
