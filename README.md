@@ -80,6 +80,21 @@ Data Construction / Cube Extraction Timing:
 |  | 256 | 49 ms | 30.5 ms | 2.79 ms | 33.6 ms |
 |  | 512 | 221 ms | 90.9 ms | 2.7 ms | 71.8 ms |
 
+CUDA vs. OpenGL. Voxel rendering pipeline performance comparison.
+(With NVidia GT750M)
+| Voxelize | Model | CUDA Render Time | CUDA FPS | OpenGL Render Time | OpenGL FPS |
+| --- | --- | --- | --- | --- | --- |
+| Without Voxelization | Dragon | 47 ms | 18 | 15 ms | 60 |
+|  | Two Cows | 16 ms | 35 | 0~5 ms | 60 |
+|  | All Three* | 55 ms | 17 | 15 ms | 58 |
+|  | Bunny | 31 ms | 29 | ~0 ms | 60 ms |
+| With Voxelization | Dragon | 156 ms | 5 | 31 ms | 30 |
+|  | Two Cows | 23 ms | 27 | ~0 ms | 60 |
+|  | All Three | 141 ms | 7 | 16 ms | 34 |
+|  | Bunny | 109 ms | 10 | 15 ms | 47 |
+
+(*)All Three is a model scene contains dragon, bunny and buddha objects.
+
 ##References
 
 [Interactive Indirect Illumination Using Voxel Cone Tracing] (https://hal.inria.fr/hal-00650196)
