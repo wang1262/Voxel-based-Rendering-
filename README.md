@@ -38,16 +38,6 @@ OpenGL Stanford Dragon:
 
 [1024^3 Voxels Stanford Dragon](https://www.youtube.com/watch?v=wFguF1bXP6g&feature=youtu.be)
 
-Building Voxel Octree
----------------------
-Two points of octree implementation:
- - Only pixels to be actually displayed need to be computed, with the actual screen resolution limiting the level of voxel detail required (limits the computational cost during rendering)
- 
- - Interior voxels, fully enclosed voxels, are unnecessary to be included in the 3D data set (limits the amount of 3D voxel data, which is the storage space)
-
-Reference: [Sparse voxel Octree](http://en.wikipedia.org/wiki/Sparse_voxel_octree), 
-           [Simple Octree](https://github.com/brandonpelfrey/SimpleOctree)
-
 ##Phase III Progress
 
 - Texture Mapping in VoxelPipe is Complete
@@ -62,6 +52,18 @@ This shows the stanford dragon with textures mapped into the voxel grid, then fi
 This is the same as before, though the cubes rendered are extracted from a higher level in the octree than the original voxelization, so the values are mip-mapped.
 
 ![Textured Dragon Octree Mip-Mapped] (images/textured_dragon_svo_mipmapped_gl.png)
+
+##References
+
+[Interactive Indirect Illumination Using Voxel Cone Tracing] (https://hal.inria.fr/hal-00650196)
+
+[Voxel Cone Tracing and Sparse Voxel Octree for Real-time Global Illumination](http://on-demand.gputechconf.com/gtc/2012/presentations/SB134-Voxel-Cone-Tracing-Octree-Real-Time-Illumination.pdf)
+
+[OpenGL Insights - Octree-Based Sparse Voxelization Using the GPU Hardware Rasterizer] (http://www.seas.upenn.edu/~pcozzi/OpenGLInsights/OpenGLInsights-SparseVoxelization.pdf)
+
+[GigaVoxels] (http://maverick.inria.fr/Membres/Cyril.Crassin/thesis/CCrassinThesis_EN_Web.pdf)
+
+[VoxelPipe] (https://research.nvidia.com/sites/default/files/publications/voxel-pipe.pdf)
 
 ##Bloopers
 
