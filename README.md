@@ -95,6 +95,7 @@ Data Construction / Cube Extraction Timing:
 |  | Bunny | 109 ms | 10 | 15 ms | 47 |
 
 (*)  All scenes have resolution set as 512.
+
 (**) All Three is a model scene contains dragon, bunny and buddha objects.
 
 ##References
