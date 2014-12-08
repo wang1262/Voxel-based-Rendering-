@@ -23,9 +23,9 @@
 #define ZOOM_SPEED 8
 #define MIDDLE_SPEED 12
 
-#define USE_CUDA_RASTERIZER 1
+#define USE_CUDA_RASTERIZER 0
 #define VOXELIZE 1
-#define OCTREE 0
+#define OCTREE 1
 
 #include "rasterizeKernels.h"
 #include "utilities.h"
