@@ -105,12 +105,17 @@ delete loader;
 void mainLoop() {
 	while(!glfwWindowShouldClose(window)){
 		glfwPollEvents();
-
+		double times, timed=0.0f;
+		times = clock();
 		if (USE_CUDA_RASTERIZER) {
 			runCuda();
 		} else {
 			runGL();
 		}
+		timed = clock();
+		double diffms = (double)(timed-times)/1000.0;
+		cout<<"Time for rendering: "<<diffms<<" seconds."<<endl;
+
 
 		time_t seconds2 = time (NULL);
 
